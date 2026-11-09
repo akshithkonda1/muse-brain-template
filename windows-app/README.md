@@ -50,14 +50,14 @@ git clone https://github.com/akshithkonda1/muse-brain-template.git
 cd muse-brain\windows-app
 npm ci
 npm run brain-data
-npx react-native-windows-init --overwrite --version 0.76.5
+npx react-native init-windows --overwrite
 npx react-native run-windows --release --arch x64 --no-packager --no-launch
 ```
 
 The built app lands in
 `windows-app\windows\x64\Release\MuseBrain\MuseBrain.exe`
 (next to its DLLs — ship the whole `MuseBrain` folder, not the
-`.exe` alone). The first `react-native-windows-init` run generates
+`.exe` alone). The first `react-native init-windows` run generates
 the `windows\` native project (C++ / MSBuild); it is not committed
 — the workflow regenerates it every build.
 

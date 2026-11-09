@@ -39,9 +39,9 @@ jobs:
   build-windows:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Set up Node 20
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: "20"
           cache: npm
@@ -58,7 +58,10 @@ jobs:
       - name: Generate the native Windows project
         working-directory: windows-app
         # windows/ is NOT committed — init regenerates it every build.
-        run: npx --yes react-native-windows-init --overwrite --version 0.76.5
+        # NOTE: react-native-windows-init only supports RNW <= 0.75.
+        # For 0.76+ the supported command is `react-native init-windows`
+        # (ships with react-native-windows itself).
+        run: npx react-native init-windows --overwrite
       - name: Build the .exe (Release, x64)
         working-directory: windows-app
         run: npx react-native run-windows --release --arch x64 --no-packager --no-launch
@@ -71,7 +74,7 @@ jobs:
           if ($p.HasExited) { throw "exe exited immediately" }
           Stop-Process -Id $p.Id -Force
       - name: Upload the .exe (+ DLLs)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: MuseBrain-windows-exe
           path: windows-app/windows/x64/Release/MuseBrain
@@ -80,7 +83,7 @@ jobs:
   build-macos:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer || xcodebuild -version
       - name: Build the .app (Release, unsigned)
@@ -91,7 +94,7 @@ jobs:
           ls -lh build/Build/Products/Release/MuseBrain.app
       - name: Build the .dmg
         run: |
-          mkdir -p dmg-staging
+          mkdir -p dmg-staging dmg-staging/Brain dist
           cp -R build/Build/Products/Release/MuseBrain.app dmg-staging/
           # Ship the brain folder alongside the app, so the app finds
           # it as "Brain" next to itself on first launch.
@@ -103,7 +106,7 @@ jobs:
             -ov -format UDZO dist/MuseBrain.dmg
           ls -lh dist/
       - name: Upload the .dmg
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: MuseBrain-macos-dmg
           path: dist/MuseBrain.dmg
