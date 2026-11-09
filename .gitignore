@@ -15,3 +15,9 @@ credentials*
 # Staging audit only — never push this file. It names the private
 # brain and the person it was scrubbed from.
 SCRUB-REPORT.md
+
+# ML caches — generated locally, never committed.
+ml/.cache/
+*.npz
+*.npy
+*.pkl
