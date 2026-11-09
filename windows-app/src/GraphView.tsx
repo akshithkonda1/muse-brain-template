@@ -151,7 +151,7 @@ export function GraphView({
     focusCluster !== null &&
     !(BRAIN.clusters[focusCluster]?.members.includes(stem) ?? false);
 
-  const stroke = dark ? '#9ca3af' : '#6b7280';
+  const stroke = dark ? '#A19CB6' : '#6F6A7E';
   return (
     <View style={styles.container}>
       <View style={styles.toolbar}>
@@ -315,14 +315,19 @@ export function GraphView({
                       strokeWidth={2.5}
                     />
                   )}
-                  <SvgText
-                    x={pos[0] + r + 7}
-                    y={pos[1] + 4}
-                    fontSize={11}
-                    fontWeight="600"
-                    fill={dark ? '#e5e7eb' : '#111827'}>
-                    {label}
-                  </SvgText>
+                  {/* Labels: selected node only — even the hub labels
+                      collide in the centre, because the hubs are all
+                      linked to each other. Names live in the sidebar. */}
+                  {isSelected && (
+                    <SvgText
+                      x={pos[0] + r + 7}
+                      y={pos[1] + 4}
+                      fontSize={11}
+                      fontWeight="600"
+                      fill={dark ? '#F4F2FA' : '#17141F'}>
+                      {label}
+                    </SvgText>
+                  )}
                   <Circle
                     cx={pos[0]}
                     cy={pos[1]}

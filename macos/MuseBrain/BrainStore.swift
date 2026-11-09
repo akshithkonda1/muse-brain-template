@@ -273,6 +273,36 @@ final class BrainStore: ObservableObject {
                 pos[s]!.y = min(490, max(30, pos[s]!.y + fy))
             }
         }
+        // De-overlap pass (mirrors scan.py): node radius is
+        // 8 + min(8, degree); push overlapping pairs apart.
+        var incoming: [String: [String]] = [:]
+        for note in notes { for t in note.links { incoming[t, default: []].append(note.stem) } }
+        func radius(_ stem: String) -> Double {
+            let n = notes.first { $0.stem == stem }
+            let deg = (n?.links.count ?? 0) + (incoming[stem]?.count ?? 0)
+            return 8 + min(8, Double(deg))
+        }
+        for _ in 0..<25 {
+            var moved = false
+            for (i, a) in stems.enumerated() {
+                for b in stems[(i + 1)...] {
+                    let need = radius(a) + radius(b) + 6
+                    let dx = pos[b]!.x - pos[a]!.x
+                    let dy = pos[b]!.y - pos[a]!.y
+                    let d = max(hypot(dx, dy), 0.01)
+                    if d < need {
+                        let push = (need - d) / 2
+                        let ux = dx / d, uy = dy / d
+                        pos[a]!.x = min(770, max(30, pos[a]!.x - ux * push))
+                        pos[a]!.y = min(490, max(30, pos[a]!.y - uy * push))
+                        pos[b]!.x = min(770, max(30, pos[b]!.x + ux * push))
+                        pos[b]!.y = min(490, max(30, pos[b]!.y + uy * push))
+                        moved = true
+                    }
+                }
+            }
+            if !moved { break }
+        }
         return pos
     }
 }

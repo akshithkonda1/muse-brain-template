@@ -181,10 +181,15 @@ struct GraphView: View {
                             width: (radius + 7) * 2, height: (radius + 7) * 2))
                         context.stroke(glow, with: .color(.accentColor.opacity(0.35)), lineWidth: 5)
                     }
-                    let label = note.title.count > 22
-                        ? String(note.title.prefix(21)) + "…" : note.title
-                    context.draw(Text(label).font(.caption).bold(),
-                                 at: CGPoint(x: center.x + radius + 7, y: center.y))
+                    // Labels: selected node only — even the hub labels
+                    // collide in the centre, because the hubs are all
+                    // linked to each other. Names live in the sidebar.
+                    if isSelected {
+                        let label = note.title.count > 22
+                            ? String(note.title.prefix(21)) + "…" : note.title
+                        context.draw(Text(label).font(.caption).bold(),
+                                     at: CGPoint(x: center.x + radius + 7, y: center.y))
+                    }
                 }
             }
             .opacity(1)

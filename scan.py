@@ -358,6 +358,29 @@ def layout_positions(notes, incoming, clusters=None):
             fy = (ccy - pos[s][1]) * 0.03 + (260 - pos[s][1]) * 0.005 + forces[s][1]
             pos[s][0] = min(770, max(30, pos[s][0] + fx))
             pos[s][1] = min(490, max(30, pos[s][1] + fy))
+    # De-overlap pass: node radius is 8 + min(8, degree), so two hubs
+    # need ~36px between centres. The link springs pull hubs together;
+    # push any overlapping pair apart (half the overlap each), up to
+    # 25 passes, deterministic order.
+    deg = {n["stem"]: len(n["links"]) + len(incoming.get(n["stem"], [])) for n in notes}
+    for _ in range(25):
+        moved = False
+        for i, a in enumerate(stems):
+            for b in stems[i + 1:]:
+                need = 8 + min(8, deg.get(a, 0)) + 8 + min(8, deg.get(b, 0)) + 6
+                dx = pos[b][0] - pos[a][0]
+                dy = pos[b][1] - pos[a][1]
+                d = math.hypot(dx, dy) or 0.01
+                if d < need:
+                    push = (need - d) / 2
+                    ux, uy = dx / d, dy / d
+                    pos[a][0] = min(770, max(30, pos[a][0] - ux * push))
+                    pos[a][1] = min(490, max(30, pos[a][1] - uy * push))
+                    pos[b][0] = min(770, max(30, pos[b][0] + ux * push))
+                    pos[b][1] = min(490, max(30, pos[b][1] + uy * push))
+                    moved = True
+        if not moved:
+            break
     return {s: [round(x, 1), round(y, 1)] for s, (x, y) in pos.items()}
 
 

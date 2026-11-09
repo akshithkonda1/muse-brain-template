@@ -109,6 +109,9 @@ ul.plain li:hover{color:var(--accent)}
 #graph .node{cursor:pointer}
 #graph .node circle.core{stroke:var(--surface);stroke-width:1.5}
 #graph .node text{font-size:11px;fill:var(--ink);pointer-events:none;
+  display:none;paint-order:stroke;stroke:var(--surface);stroke-width:3px;stroke-linejoin:round}
+#graph .node.selected text,#graph .node:hover text{display:block}
+#graph .hull-label{paint-order:stroke;stroke:var(--surface);stroke-width:3px;stroke-linejoin:round}
   font-weight:600}
 #graph .node.orphan circle.core{fill:var(--surface);stroke:var(--warn);
   stroke-width:2;stroke-dasharray:3 2}
@@ -207,7 +210,8 @@ footer{padding:1rem 1.4rem 2.2rem;color:var(--muted);font-size:.85rem;
       <div class="legend" id="legend"></div>
     </div>
     <p class="muted" style="margin:.6rem .2rem 0">Drag nodes to move them · drag background to pan · scroll to zoom ·
-    click a node to read it · click a cluster to focus it. Dashed amber nodes are quiet notes — no links yet, not errors.</p>
+    hover a node for its name · click a node to read it · click a cluster to focus it.
+    Dashed amber nodes are quiet notes — no links yet, not errors.</p>
     <div class="card" id="resultsCard" hidden style="margin-top:1rem">
       <h2>Search results</h2>
       <ul class="plain" id="results"></ul>
@@ -252,15 +256,21 @@ function colorFor(note) {
 }
 
 /* ---- theme ---- */
+/* localStorage may be unavailable (file:// in a locked-down browser,
+   private mode) — the dashboard must never hard-fail on it. */
+const store = (() => {
+  try { localStorage.setItem("__probe", "1"); localStorage.removeItem("__probe"); return localStorage; }
+  catch (e) { return { getItem: () => null, setItem: () => {} }; }
+})();
 const root = document.documentElement;
-const savedTheme = localStorage.getItem("muse-brain-theme");
+const savedTheme = store.getItem("muse-brain-theme");
 if (savedTheme) root.setAttribute("data-theme", savedTheme);
-else if (matchMedia("(prefers-color-scheme: dark)").matches)
+else if (typeof matchMedia === "function" && matchMedia("(prefers-color-scheme: dark)").matches)
   root.setAttribute("data-theme", "dark");
 $("#themeBtn").onclick = () => {
   const next = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
   root.setAttribute("data-theme", next);
-  localStorage.setItem("muse-brain-theme", next);
+  store.setItem("muse-brain-theme", next);
 };
 
 /* ---- BM25 search (same index the Python ml/search.py builds) ---- */
@@ -502,6 +512,20 @@ function applyView() {
   const vp = svg.querySelector("#viewport");
   if (vp) vp.setAttribute("transform", `translate(${view.x} ${view.y}) scale(${view.k})`);
 }
+/* Fit the initial view to the content, not the empty viewBox — the
+ * notes occupy a fraction of 800×560, and a full-viewBox fit leaves
+ * the graph small in a sea of paper. */
+function fitView() {
+  const pos = BRAIN.positions || {};
+  const pts = Object.values(pos);
+  if (!pts.length) { view = {x: 0, y: 0, k: 1}; return; }
+  const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+  const minX = Math.min(...xs) - 70, maxX = Math.max(...xs) + 70;
+  const minY = Math.min(...ys) - 70, maxY = Math.max(...ys) + 70;
+  const k = Math.min(2.2, Math.min(800 / (maxX - minX), 560 / (maxY - minY)));
+  view = {k, x: (800 - (maxX - minX) * k) / 2 - minX * k,
+          y: (560 - (maxY - minY) * k) / 2 - minY * k};
+}
 function visibleStems() {
   if (searchHighlight) return searchHighlight;
   if (focusCluster === null) return null;
@@ -534,14 +558,19 @@ function renderGraph() {
       poly.setAttribute("stroke", col);
       poly.setAttribute("stroke-opacity", "0.45");
       vp.appendChild(poly);
-      const label = document.createElementNS(NS, "text");
-      const top = h.reduce((a, p) => p[1] < a[1] ? p : a, h[0]);
-      label.setAttribute("x", top[0]); label.setAttribute("y", top[1] - 8);
-      label.setAttribute("class", "hull-label");
-      label.setAttribute("fill", col);
-      label.setAttribute("text-anchor", "middle");
-      label.textContent = c.label;
-      vp.appendChild(label);
+      // Hull label only for the focused cluster — at rest the six
+      // hull names pile onto the same dense centre as the hub labels.
+      // The legend + sidebar name the clusters; focus reveals one.
+      if (focusCluster === i) {
+        const label = document.createElementNS(NS, "text");
+        const top = h.reduce((a, p) => p[1] < a[1] ? p : a, h[0]);
+        label.setAttribute("x", top[0]); label.setAttribute("y", top[1] - 8);
+        label.setAttribute("class", "hull-label");
+        label.setAttribute("fill", col);
+        label.setAttribute("text-anchor", "middle");
+        label.textContent = c.label;
+        vp.appendChild(label);
+      }
     });
   // Suggested links (dashed, toggleable).
   if (showSuggest) {
@@ -571,14 +600,16 @@ function renderGraph() {
   for (const n of notes) {
     const [x, y] = pos[n.stem] || [400, 280];
     const g = document.createElementNS(NS, "g");
+    const r = 8 + Math.min(8, degree(n.stem));
+    const isHub = degree(n.stem) >= 6;
     g.setAttribute("class", "node" +
+      (isHub ? " hub" : "") +
       ((BRAIN.orphans || []).includes(n.stem) ? " orphan" : "") +
       (n.stem === selected ? " selected" : "") +
       (vis && !vis.has(n.stem) ? " dim" : ""));
     g.dataset.stem = n.stem;
     g.setAttribute("transform", `translate(${x} ${y})`);
-    const r = 8 + Math.min(8, degree(n.stem));
-    if (degree(n.stem) >= 6) {
+    if (isHub) {
       const ring = document.createElementNS(NS, "circle");
       ring.setAttribute("r", r + 4.5);
       ring.setAttribute("fill", "none");
@@ -667,7 +698,7 @@ svg.addEventListener("pointerleave", () => { tooltip.style.display = "none"; });
   }
   $("#zoomIn").onclick = () => { view.k = Math.min(3, view.k * 1.2); applyView(); };
   $("#zoomOut").onclick = () => { view.k = Math.max(0.4, view.k / 1.2); applyView(); };
-  $("#zoomReset").onclick = () => { view = {x: 0, y: 0, k: 1}; renderGraph(); };
+  $("#zoomReset").onclick = () => { fitView(); renderGraph(); };
 })();
 
 /* ---- search box ---- */
@@ -706,8 +737,9 @@ $("#exportBtn").onclick = () => {
   clone.setAttribute("height", "1120");
   const style = document.createElementNS(NS, "style");
   style.textContent = `#graph .edge{stroke:#8a8696;stroke-opacity:.4}` +
-    `#graph .node text{font:600 13px system-ui,sans-serif;fill:#17141F}` +
-    `#graph .hull-label{font:700 13px system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase}`;
+    `#graph .node text{font:600 13px system-ui,sans-serif;fill:#17141F;display:none;paint-order:stroke;stroke:#FFFFFF;stroke-width:3px}` +
+    `#graph .node.hub text,#graph .node.selected text{display:block}` +
+    `#graph .hull-label{font:700 13px system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase;paint-order:stroke;stroke:#FFFFFF;stroke-width:3px}`;
   clone.insertBefore(style, clone.firstChild);
   const blob = new Blob([new XMLSerializer().serializeToString(clone)],
     {type: "image/svg+xml"});
@@ -734,6 +766,7 @@ $("#resetBtn").onclick = () => {
 };
 
 /* ---- init ---- */
+fitView();
 renderGraph(null);
 </script>
 </body>

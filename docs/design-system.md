@@ -59,6 +59,21 @@ the tag's position in the sorted tag list.
 
 ## The graph
 
+- **Labels are earned, not automatic.** A 45-node map with every
+  label on is an unreadable pile in the centre — and even the 8 hub
+  labels collide there, because the hubs are all linked to each
+  other, and zooming in doesn't help: the labels are wider than
+  the gaps between nodes. So at rest the map shows no node labels:
+  hover a node for its name, or click to select it. Exported SVGs
+  name the hubs. Every label carries a surface-coloured halo
+  (`paint-order: stroke`, 3px) so it stays legible over edges. Cluster hull labels show only for the
+  focused cluster (click a cluster to focus it); the legend and
+  the sidebar name the clusters at rest.
+- **Fit to content, not to the viewBox.** The notes occupy a
+  fraction of the 800×560 canvas; a full-viewBox fit leaves the
+  graph small in a sea of paper. The initial view (and the Fit
+  button) fits the node bounding box with ~70px padding, capped
+  at 2.2× zoom.
 - **Layout is cluster-aware.** Cluster centres sit on a ring; nodes
   seed around their own cluster's centre, then ~120 force iterations
   (repulsion + link springs + a pull toward the cluster centre) settle
@@ -67,9 +82,12 @@ the tag's position in the sorted tag list.
   territory — in a small brain most clusters are singletons, and
   giving each one a centre would crowd the ring until every hull
   overlaps. Singletons park on the periphery, grouped by first tag.
-  Implemented in `scan.py layout_positions()`, ported in Swift
-  (`BrainStore.layoutPositions`) — the Windows app reuses the Python
-  positions from `brain-data.json`.
+  A final de-overlap pass pushes any pair closer than the sum of
+  their radii (+6px) apart — node radius is `8 + min(8, degree)`,
+  so two hubs need ~36px. Implemented in `scan.py
+  layout_positions()`, ported in Swift (`BrainStore.layoutPositions`)
+  — the Windows app reuses the Python positions from
+  `brain-data.json`.
 - **Node size = importance.** Radius `8 + min(8, degree)` where degree
   is links in + links out. A note with degree ≥ 6 is a **hub** and gets
   an outer ring.
