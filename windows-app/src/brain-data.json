@@ -1,0 +1,117 @@
+{
+ "generated": "2026-11-09T01:31:27.452773+00:00",
+ "source": "Markdown brain (notes/ + wiki/) via scan.py + ml/search.py",
+ "notes": [
+  {
+   "stem": "example-person",
+   "title": "Example person — Jordan Lee",
+   "tags": [
+    "people"
+   ],
+   "links": [
+    "example-project"
+   ],
+   "text": "# Example person — Jordan Lee\n\n> EXAMPLE NOTE — fictional person, made up to show the shape of a\n> person note. Names here are placeholders, never real people.\n\nA friend who shares the community garden plot. (Source: example —\nno source, do not treat as fact.)\n\n- Fact, with source. (Source: example.)\n- Fact that links onward. See [[example-project]].\n\n## Boundaries\n\n- Never message anyone without explicit permission.\n- Never surface a person's contact details outside the brain.\n\n## Open threads\n\n- [ ] Ask Jordan which beds they want to tend this season.\n\nTags: #people\n",
+   "area": "notes",
+   "mtime": 1794184127.2738082,
+   "incoming": [
+    "example-project"
+   ]
+  },
+  {
+   "stem": "example-project",
+   "title": "Example project — Community Garden Tracker",
+   "tags": [
+    "ideas",
+    "projects"
+   ],
+   "links": [
+    "example-person"
+   ],
+   "text": "# Example project — Community Garden Tracker\n\n> EXAMPLE NOTE — fictional project, made up to show the shape of a\n> project note. Replace it with your own first real project.\n\nA small app for tracking what was planted where in a shared\ncommunity garden, and when each bed was last watered.\n\n## Status\n\n- Idea stage. No code yet. First decision owed: native app or\n  simple web page? (Source: example — no source, do not treat as fact.)\n\n## Key facts\n\n- One idea per note: this note is the project, not the garden itself.\n  Garden facts live in their own notes. See [[example-person]] for\n  who is involved.\n- Decisions get a source and a date when they are made. None made yet.\n\n## Open threads\n\n- [ ] Pick the platform and record the decision with its source.\n\nTags: #projects #ideas\n",
+   "area": "notes",
+   "mtime": 1794184127.2785811,
+   "incoming": [
+    "example-person",
+    "walrus-second-brain-post"
+   ]
+  },
+  {
+   "stem": "walrus-second-brain-post",
+   "title": "Walrus second-brain post",
+   "tags": [
+    "brain",
+    "notes"
+   ],
+   "links": [
+    "example-project"
+   ],
+   "text": "# Walrus second-brain post\n\n> EXAMPLE NOTE — everything here is from a public post, not personal\n> data. Kept as a worked example of an atomic note: one idea, one\n> source, one conclusion.\n\n- Idea: a plain folder of Markdown files plus a short map file becomes\n  a living second brain when the agent loads the map every session.\n- Source: Walrus (@Walrus_systems), X post, Nov 7, 2026.\n  https://x.com/walrus_systems/status/2119163389897322712\n- What the graph showed: the map loaded (under 200 lines);\n  `rules/people.md` matched only on match; `skills/weekly-review`\n  run; `memory.md` saved with a source under every claim;\n  a writing rule flagged as conflicting with the map's naming rule,\n  fix proposed. 3,211 → 3,365 records, 11,500+ links, one topic per\n  file. No Obsidian, no database.\n- Conclusion: the map + scan is the mechanism; the files are the\n  brain. This template is built on exactly that pattern — see\n  `wiki/second-brain-pattern.md` and [[example-project]].\n\nTags: #brain #notes\n",
+   "area": "notes",
+   "mtime": 1794184127.2738082,
+   "incoming": []
+  },
+  {
+   "stem": "second-brain-pattern",
+   "title": "The second-brain pattern this brain is built on",
+   "tags": [
+    "brain"
+   ],
+   "links": [],
+   "text": "# The second-brain pattern this brain is built on\n\nSynthesis of the design inputs (Nov 8, 2026). Sources: Walrus X post\nNov 7; Ryven article Oct 27; Karpathy llm.txt gist; 8 public repos\n(full verdicts in [attribution](../docs/attribution.md)).\n\n## The core idea\n\nRAG re-derives knowledge from scratch on every question. A wiki\ncompiles it once and keeps it current: the LLM reads a new source,\nextracts what matters, integrates it into the existing pages,\nupdates cross-references, and flags where new data contradicts old\nclaims. The cross-references are already there. The contradictions\nare already flagged. The synthesis already reflects everything read.\nThat compounding — not retrieval — is the whole point.\n\n## The shape\n\n- **Three layers:** immutable `raw/` sources, compiled `wiki/`,\n  and the schema (the map files) that tells the LLM the conventions.\n- **A map, loaded every session**, under 200 lines. Rules load only\n  on match; skills run only when called. The map catches conflicts\n  (a rule contradicting the map gets flagged, not followed).\n- **One topic per file. One idea per note.** Atomic notes: one idea,\n  one source, one conclusion, max 3 tags.\n- **Every claim keeps its source.** No source, no claim.\n- **Duplicates are detected**, not filed twice: SHA-256 exact match,\n  Jaccard > 0.72 is a likely duplicate.\n- **Five stages:** CURATE → SEARCH → REWRITE → REVIEW → OBSERVE.\n- **A weekly loop** instead of a daemon: repeated corrections become\n  rules, stale pages get flagged, unused rules retire, Git records\n  it all in ≤200-word commits.\n- **Plain text only.** Markdown + ripgrep + Git. No Obsidian, no\n  database, no embeddings, no vector search, no API keys, no server.\n\n## What was removed, and why\n\n- **Obsidian** (vault, graph view, Dataview, plugins): the graph is\n  nice, the Markdown files are the brain. The scan (`scan.py`) and\n  the generated map (`MAP.md`) replace the graph view.\n- **Databases and embeddings** (gbrain's Postgres, open-second-brain's\n  SQLite index, qmd's vectors): the index file plus ripgrep is enough\n  at this scale, and a database is a second thing to maintain.\n- **Daemons and servers** (gbrain's 24/7 enrichment, smixs's VPS,\n  ai-memory's Rust server): a weekly manual pass does the same\n  learning without anything running while you sleep.\n- **43 skills / 10 agents** (COG): too much surface. Eight skills,\n  run when called.\n- **The 70/30 lead/lag ratio** (Ryven): named but not verified — not\n  applied until its meaning is confirmed.\n\n## Open questions\n\n- One map or two? An earlier version had `MUSE.md` and `CLAUDE.md`\n  from two parallel builds. This template merges them into one map\n  (`MUSE.md`) — one map is the rule.\n- When (if ever) does this brain outgrow index + ripgrep and need\n  real search? Karpathy's answer: qmd, later, if the wiki gets big.\n  Not now.\n\nTags: #brain\n",
+   "area": "wiki",
+   "mtime": 0,
+   "incoming": []
+  }
+ ],
+ "positions": {
+  "example-person": [
+   449.9,
+   281.0
+  ],
+  "example-project": [
+   364.7,
+   286.7
+  ],
+  "walrus-second-brain-post": [
+   384.5,
+   207.3
+  ],
+  "second-brain-pattern": [
+   440.1,
+   221.7
+  ]
+ },
+ "clusters": [
+  {
+   "label": "never, garden, person",
+   "members": [
+    "example-person",
+    "example-project"
+   ]
+  },
+  {
+   "label": "map, md, second",
+   "members": [
+    "walrus-second-brain-post",
+    "second-brain-pattern"
+   ]
+  }
+ ],
+ "suggestions": [
+  {
+   "a": "walrus-second-brain-post",
+   "b": "second-brain-pattern",
+   "cosine": 0.228,
+   "shared_tags": [
+    "brain"
+   ]
+  }
+ ],
+ "orphans": [
+  "second-brain-pattern"
+ ],
+ "broken": [],
+ "stale": [],
+ "duplicates": []
+}

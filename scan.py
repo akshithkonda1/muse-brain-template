@@ -15,6 +15,8 @@ Outputs are overwritten each run. MAP.md is generated — never edit by hand.
 """
 
 import html
+import json
+import math
 import re
 import sys
 from collections import Counter, defaultdict
@@ -160,8 +162,217 @@ def render_map(notes, tag_counts, incoming, broken, orphans, now):
     return "\n".join(lines)
 
 
+def build_search_data(notes):
+    """BM25 index data for the dashboard: idf, per-doc term counts, avgdl.
+
+    Reuses ml/search.py when importable so the browser ranking matches
+    the Python tool exactly; falls back to a small local computation.
+    """
+    docs = []
+    for folder in ("notes", "wiki"):
+        d = BRAIN / folder
+        if not d.is_dir():
+            continue
+        for path in sorted(d.glob("*.md")):
+            if path.name == "README.md":
+                continue
+            text = path.read_text(encoding="utf-8", errors="ignore")
+            title_m = TITLE_RE.search(text)
+            docs.append({
+                "stem": path.stem,
+                "file": str(path.relative_to(BRAIN)),
+                "title": title_m.group(1) if title_m else path.stem,
+                "tags": sorted(set(TAG_RE.findall(text))),
+                "links": sorted({normalize_target(t) for t in LINK_RE.findall(text)}),
+                "text": text,
+                "mtime": path.stat().st_mtime,
+            })
+    try:
+        sys.path.insert(0, str(BRAIN))
+        from ml.search import Index, tokenize as ml_tokenize
+
+        class _Doc(dict):
+            pass
+
+        ml_docs = []
+        for d in docs:
+            md = _Doc(d)
+            md["tokens"] = ml_tokenize(d["text"])
+            ml_docs.append(md)
+        idx = Index(ml_docs)
+        terms = {}
+        for d in ml_docs:
+            terms[d["stem"]] = {t: c for t, c in d["counts"].items()
+                                if t in idx.idf}
+        return {
+            "docs": docs,
+            "idf": {t: round(v, 4) for t, v in idx.idf.items()},
+            "terms": terms,
+            "avgdl": round(idx.avgdl, 2),
+            "clusters": idx.clusters(),
+            "suggest": [{"a": s["a"]["stem"], "b": s["b"]["stem"],
+                         "cosine": s["cosine"],
+                         "shared_tags": s["shared_tags"]}
+                        for s in idx.suggest_links()],
+            "duplicates": idx.duplicates(),
+            "tensions": idx.conflicts(),
+        }
+    except Exception:
+        # Fallback: plain term counts + idf, no clusters.
+        import math as _math
+        df = Counter()
+        per_doc = {}
+        for d in docs:
+            toks = [w for w in re.findall(r"[a-z0-9']+",
+                                          clean_text(d["text"]).lower())
+                    if len(w) > 1]
+            counts = Counter(toks)
+            per_doc[d["stem"]] = dict(counts)
+            for t in counts:
+                df[t] += 1
+        n = len(docs) or 1
+        idf = {t: round(_math.log((n - c + 0.5) / (c + 0.5) + 1), 4)
+               for t, c in df.items()}
+        avgdl = sum(sum(c.values()) for c in per_doc.values()) / n
+        return {"docs": docs, "idf": idf, "terms": per_doc,
+                "avgdl": round(avgdl, 2), "clusters": [], "suggest": [],
+                "duplicates": [], "tensions": []}
+
+
+def clean_text(text: str) -> str:
+    """Strip code fences / markdown markup; expand [[links]] to words."""
+    text = re.sub(r"```.*?```", " ", text, flags=re.S)
+    text = LINK_RE.sub(lambda m: " " + m.group(1).replace("-", " ") + " ", text)
+    text = re.sub(r"[#*`>\[\]()|_]", " ", text)
+    return text
+
+
+def layout_positions(notes, incoming):
+    """Deterministic force layout for the graph view.
+
+    Nodes start on a circle grouped by first tag; ~120 iterations of
+    repulsion + springs + centering. Seeded, so the same brain always
+    draws the same map. Returns {stem: [x, y]} in an 800x520 viewBox.
+    """
+    import random as _random
+
+    rng = _random.Random(7)
+    stems = [n["stem"] for n in notes]
+    if not stems:
+        return {}
+    groups = {}
+    for n in notes:
+        key = (n["tags"] or ["notes"])[0]
+        groups.setdefault(key, []).append(n["stem"])
+    pos = {}
+    angle_step = 2 * math.pi / max(len(stems), 1)
+    for i, stem in enumerate(stems):
+        # Group arcs around the circle so same-tag notes start together.
+        group_names = list(groups)
+        g_idx = group_names.index((next(n for n in notes if n["stem"] == stem)["tags"] or ["notes"])[0])
+        base = (g_idx / max(len(group_names), 1)) * 2 * math.pi
+        a = base + (i % 5) * 0.35
+        r = 150 + rng.uniform(-30, 30)
+        pos[stem] = [400 + r * math.cos(a), 260 + r * 0.8 * math.sin(a)]
+    edges = []
+    for n in notes:
+        for t in n["links"]:
+            if t in pos and t != n["stem"]:
+                edges.append((n["stem"], t))
+    for _ in range(120):
+        forces = {s: [0.0, 0.0] for s in stems}
+        for i, a in enumerate(stems):
+            for b in stems[i + 1:]:
+                dx = pos[a][0] - pos[b][0]
+                dy = pos[a][1] - pos[b][1]
+                dist = max(20.0, math.hypot(dx, dy))
+                f = 900.0 / (dist * dist)
+                fx, fy = f * dx / dist, f * dy / dist
+                forces[a][0] += fx
+                forces[a][1] += fy
+                forces[b][0] -= fx
+                forces[b][1] -= fy
+        for a, b in edges:
+            dx = pos[b][0] - pos[a][0]
+            dy = pos[b][1] - pos[a][1]
+            dist = max(1.0, math.hypot(dx, dy))
+            f = (dist - 90) * 0.02
+            fx, fy = f * dx / dist, f * dy / dist
+            forces[a][0] += fx
+            forces[a][1] += fy
+            forces[b][0] -= fx
+            forces[b][1] -= fy
+        for s in stems:
+            fx = (400 - pos[s][0]) * 0.01 + forces[s][0]
+            fy = (260 - pos[s][1]) * 0.01 + forces[s][1]
+            pos[s][0] = min(770, max(30, pos[s][0] + fx))
+            pos[s][1] = min(490, max(30, pos[s][1] + fy))
+    return {s: [round(x, 1), round(y, 1)] for s, (x, y) in pos.items()}
+
+
 def render_dashboard(notes, tag_counts, incoming, broken, orphans, now):
-    """Render a simple dashboard.html — inline CSS only, no external assets."""
+    """Render the polished dashboard.html from app/dashboard-template.html.
+
+    Embeds the whole searchable brain as JSON: note texts, the BM25
+    index, clusters, suggestions, orphans, stale flags, and precomputed
+    graph positions. Fully offline — no external assets. Falls back
+    to the simple generated dashboard if the template is missing.
+    """
+    template_path = BRAIN / "app" / "dashboard-template.html"
+    if not template_path.exists():
+        return _render_dashboard_simple(
+            notes, tag_counts, incoming, broken, orphans, now)
+    data = build_search_data(notes)
+    docs = data["docs"]
+    now_ts = datetime.now(timezone.utc).timestamp()
+    stale = sorted(
+        d["stem"] for d in docs
+        if (now_ts - d["mtime"]) > 90 * 86400
+    )
+    brain_json = {
+        "generated": now,
+        "notes": [{
+            "stem": d["stem"],
+            "file": d["file"],
+            "title": d["title"],
+            "tags": d["tags"],
+            "links": d["links"],
+            "text": d["text"],
+            "terms": data["terms"].get(d["stem"], {}),
+            "docLen": sum(data["terms"].get(d["stem"], {}).values()) or 1,
+        } for d in docs],
+        "incoming": {k: sorted(v) for k, v in incoming.items()},
+        "clusters": data["clusters"],
+        "suggest": data["suggest"],
+        "duplicates": data["duplicates"],
+        "tensions": data["tensions"],
+        "orphans": sorted(orphans),
+        "stale": stale,
+        "stats": {
+            "notes": len(notes),
+            "links": sum(len(n["links"]) for n in notes),
+            "broken": len(broken),
+        },
+        "tagCounts": dict(tag_counts),
+        "idf": data["idf"],
+        "avgdl": data["avgdl"],
+        "stop": ("a an the and or of to in on for with is are was were be by "
+                 "at as it its this that these those from into over under "
+                 "after before not no nor but if then than so such can could "
+                 "will would should he she they we you i his her their our "
+                 "your my me him them us what which who whom when where why "
+                 "how all any both each few more most other some such only "
+                 "own same too very just also").split(),
+        "positions": layout_positions(docs, incoming),
+    }
+    payload = json.dumps(brain_json, ensure_ascii=False).replace("</", "<\\/")
+    html_text = template_path.read_text(encoding="utf-8")
+    html_text = html_text.replace("/*__BRAIN_JSON__*/null", payload)
+    return html_text
+
+
+def _render_dashboard_simple(notes, tag_counts, incoming, broken, orphans, now):
+    """Fallback dashboard (no template): stats + tag bars, no JS app."""
     total_links = sum(len(n["links"]) for n in notes)
     max_tag = max(tag_counts.values()) if tag_counts else 1
     recent = sorted(notes, key=lambda n: n["mtime"], reverse=True)[:8]
@@ -172,83 +383,22 @@ def render_dashboard(notes, tag_counts, incoming, broken, orphans, now):
     parts = []
     parts.append("<!DOCTYPE html>")
     parts.append("<html lang=\"en\"><head><meta charset=\"utf-8\">")
-    parts.append("<meta name=\"viewport\" content=\"width=device-width, "
-                 "initial-scale=1\">")
-    parts.append("<title>Muse Brain — Dashboard</title>")
-    parts.append("<style>")
-    parts.append("body{font-family:system-ui,sans-serif;max-width:900px;"
-                 "margin:2rem auto;padding:0 1rem;color:#1c1c1e;"
-                 "background:#fafafa}")
-    parts.append("h1{font-size:1.6rem}h2{font-size:1.2rem;"
-                 "border-bottom:1px solid #ddd;padding-bottom:.25rem}")
-    parts.append(".cards{display:flex;gap:1rem;flex-wrap:wrap}")
-    parts.append(".card{flex:1;min-width:140px;background:#fff;border:1px "
-                 "solid #e0e0e0;border-radius:8px;padding:1rem}")
-    parts.append(".card b{font-size:1.6rem;display:block}")
-    parts.append(".bar-row{display:flex;align-items:center;gap:.5rem;"
-                 "margin:.25rem 0}")
-    parts.append(".bar-row span{width:90px}")
-    parts.append(".bar{height:14px;background:#7c5cbf;border-radius:3px}")
-    parts.append("ul{line-height:1.6}")
-    parts.append(".meta{color:#666;font-size:.9rem}")
-    parts.append("</style></head><body>")
+    parts.append("<title>Muse Brain — Dashboard</title></head><body>")
     parts.append("<h1>Muse Brain — Dashboard</h1>")
-    parts.append(f"<p class=\"meta\">Generated by scan.py on {esc(now)}. "
-                 "Plain folder of Markdown notes; no external assets.</p>")
-    parts.append("<div class=\"cards\">")
-    parts.append(f"<div class=\"card\"><b>{len(notes)}</b>notes</div>")
-    parts.append(f"<div class=\"card\"><b>{total_links}</b>links</div>")
-    parts.append(f"<div class=\"card\"><b>{len(broken)}</b>broken "
-                 "links</div>")
-    parts.append(f"<div class=\"card\"><b>{len(orphans)}</b>orphans</div>")
-    parts.append("</div>")
-
+    parts.append(f"<p>Generated by scan.py on {esc(now)}.</p>")
+    parts.append(f"<p>{len(notes)} notes, {total_links} links, "
+                 f"{len(broken)} broken, {len(orphans)} orphans.</p>")
     parts.append("<h2>Notes by tag</h2>")
     for tag in CANONICAL_TAGS:
         count = tag_counts.get(tag, 0)
         width = int(count / max_tag * 100) if max_tag else 0
-        parts.append(f"<div class=\"bar-row\"><span>#{esc(tag)}</span>"
-                     f"<div class=\"bar\" style=\"width:{width}%\"></div>"
-                     f"{count}</div>")
-
-    by_tag = defaultdict(list)
-    for note in notes:
-        for tag in note["tags"]:
-            by_tag[tag].append(note)
-    parts.append("<h2>Note tree by tag</h2>")
-    for tag in CANONICAL_TAGS:
-        tagged = by_tag.get(tag, [])
-        if not tagged:
-            continue
-        parts.append(f"<h3>#{esc(tag)} ({len(tagged)})</h3><ul>")
-        for note in tagged:
-            parts.append(f"<li>{esc(note['title'])} "
-                         f"<span class=\"meta\">({esc(note['file'])})"
-                         "</span></li>")
-        parts.append("</ul>")
-
+        parts.append(f"<div>#{esc(tag)}: {count}</div>")
     parts.append("<h2>Recent notes</h2><ul>")
     for note in recent:
         when = datetime.fromtimestamp(
             note["mtime"], tz=timezone.utc).strftime("%Y-%m-%d")
-        parts.append(f"<li>{esc(note['title'])} "
-                     f"<span class=\"meta\">— {when}</span></li>")
-    parts.append("</ul>")
-
-    if orphans:
-        parts.append("<h2>Orphans</h2><ul>")
-        for stem in orphans:
-            note = next(n for n in notes if n["stem"] == stem)
-            parts.append(f"<li>{esc(note['title'])}</li>")
-        parts.append("</ul>")
-    if broken:
-        parts.append("<h2>Broken links</h2><ul>")
-        for source, target in broken:
-            parts.append(f"<li>{esc(source)} → "
-                         f"[[{esc(target)}]] (no such note)</li>")
-        parts.append("</ul>")
-
-    parts.append("</body></html>")
+        parts.append(f"<li>{esc(note['title'])} — {when}</li>")
+    parts.append("</ul></body></html>")
     return "\n".join(parts)
 
 

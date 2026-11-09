@@ -1,0 +1,261 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		B0000000000000000000001 /* MuseBrainApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0000000000000000000001 /* MuseBrainApp.swift */; };
+		B0000000000000000000002 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0000000000000000000002 /* Models.swift */; };
+		B0000000000000000000003 /* BrainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0000000000000000000003 /* BrainStore.swift */; };
+		B0000000000000000000004 /* SearchEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0000000000000000000004 /* SearchEngine.swift */; };
+		B0000000000000000000005 /* MarkdownText.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0000000000000000000005 /* MarkdownText.swift */; };
+		B0000000000000000000006 /* GraphView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0000000000000000000006 /* GraphView.swift */; };
+		B0000000000000000000007 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0000000000000000000007 /* ContentView.swift */; };
+		B0000000000000000000008 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F0000000000000000000009 /* SwiftUI.framework */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		F0000000000000000000001 /* MuseBrainApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MuseBrainApp.swift; sourceTree = "<group>"; };
+		F0000000000000000000002 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+		F0000000000000000000003 /* BrainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrainStore.swift; sourceTree = "<group>"; };
+		F0000000000000000000004 /* SearchEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchEngine.swift; sourceTree = "<group>"; };
+		F0000000000000000000005 /* MarkdownText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownText.swift; sourceTree = "<group>"; };
+		F0000000000000000000006 /* GraphView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GraphView.swift; sourceTree = "<group>"; };
+		F0000000000000000000007 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		F0000000000000000000008 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		F0000000000000000000009 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
+		F0000000000000000000010 /* MuseBrain.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MuseBrain.app; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		777777777777777777777777 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B0000000000000000000008 /* SwiftUI.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		222222222222222222222222 = {
+			isa = PBXGroup;
+			children = (
+				333333333333333333333333 /* MuseBrain */,
+				444444444444444444444444 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		333333333333333333333333 /* MuseBrain */ = {
+			isa = PBXGroup;
+			children = (
+				F0000000000000000000001 /* MuseBrainApp.swift */,
+				F0000000000000000000002 /* Models.swift */,
+				F0000000000000000000003 /* BrainStore.swift */,
+				F0000000000000000000004 /* SearchEngine.swift */,
+				F0000000000000000000005 /* MarkdownText.swift */,
+				F0000000000000000000006 /* GraphView.swift */,
+				F0000000000000000000007 /* ContentView.swift */,
+				F0000000000000000000008 /* Info.plist */,
+			);
+			path = MuseBrain;
+			sourceTree = "<group>";
+		};
+		444444444444444444444444 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				F0000000000000000000010 /* MuseBrain.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		555555555555555555555555 /* MuseBrain */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = AAAAAAAAAAAAAAAAAAAAAAAA /* Build configuration list for PBXNativeTarget "MuseBrain" */;
+			buildPhases = (
+				666666666666666666666666 /* Sources */,
+				777777777777777777777777 /* Frameworks */,
+				888888888888888888888888 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = MuseBrain;
+			productName = MuseBrain;
+			productReference = F0000000000000000000010 /* MuseBrain.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		111111111111111111111111 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1500;
+				LastUpgradeCheck = 1500;
+				TargetAttributes = {
+					555555555555555555555555 = {
+						CreatedOnToolsVersion = 15.0;
+					};
+				};
+			};
+			buildConfigurationList = 999999999999999999999999 /* Build configuration list for PBXProject "MuseBrain" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 222222222222222222222222;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				555555555555555555555555 /* MuseBrain */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		888888888888888888888888 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		666666666666666666666666 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B0000000000000000000001 /* MuseBrainApp.swift in Sources */,
+				B0000000000000000000002 /* Models.swift in Sources */,
+				B0000000000000000000003 /* BrainStore.swift in Sources */,
+				B0000000000000000000004 /* SearchEngine.swift in Sources */,
+				B0000000000000000000005 /* MarkdownText.swift in Sources */,
+				B0000000000000000000006 /* GraphView.swift in Sources */,
+				B0000000000000000000007 /* ContentView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		BBBBBBBBBBBBBBBBBBBBBBBB /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				LOCALIZATION_PREFS = "";
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 0.1.0;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		CCCCCCCCCCCCCCCCCCCCCCCC /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				LOCALIZATION_PREFS = "";
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 0.1.0;
+				ONLY_ACTIVE_ARCH = NO;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		DDDDDDDDDDDDDDDDDDDDDDDD /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = MuseBrain/Info.plist;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.musebrain.app;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMBED_LIBRARIES_WITH_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		EEEEEEEEEEEEEEEEEEEEEEEE /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = MuseBrain/Info.plist;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.musebrain.app;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMBED_LIBRARIES_WITH_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		999999999999999999999999 /* Build configuration list for PBXProject "MuseBrain" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BBBBBBBBBBBBBBBBBBBBBBBB /* Debug */,
+				CCCCCCCCCCCCCCCCCCCCCCCC /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		AAAAAAAAAAAAAAAAAAAAAAAA /* Build configuration list for PBXNativeTarget "MuseBrain" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				DDDDDDDDDDDDDDDDDDDDDDDD /* Debug */,
+				EEEEEEEEEEEEEEEEEEEEEEEE /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 111111111111111111111111 /* Project object */;
+}

@@ -1,0 +1,1 @@
+{"compilerOptions":{"allowSyntheticDefaultImports":true,"esModuleInterop":true,"forceConsistentCasingInFileNames":true,"jsx":"react-native","lib":["es2019"],"module":"commonjs","moduleResolution":"node","resolveJsonModule":true,"skipLibCheck":true,"strict":true,"target":"esnext"},"include":["src/**/*","index.js"]}

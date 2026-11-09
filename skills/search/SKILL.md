@@ -6,7 +6,10 @@ description: "Search Muse Brain for what it knows. Trigger: 'brain: search <quer
 # Search
 
 Search is ripgrep over Markdown plus the index — no embeddings, no
-vector DB (Karpathy: the index is enough at this scale).
+vector DB (Karpathy: the index is enough at this scale). For ranked /
+semantic search, related notes, and clusters, use the ML skill
+instead: `skills/ml-search/` ("brain: ml search <query>") — local
+TF-IDF/BM25 by default, optional local embeddings, no API.
 
 ## Steps
 

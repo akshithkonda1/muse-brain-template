@@ -1,0 +1,386 @@
+// App.tsx — the Muse Brain window on React Native Windows.
+//
+// Three panes: sidebar (search / tags / clusters / attention),
+// memory-map graph, and the note reader. Search is BM25 with a
+// TF-IDF cosine second signal — the same math as ml/search.py and
+// the Swift app. Everything is local: the brain ships as a bundled
+// snapshot (src/brain-data.json) generated from the Markdown files.
+
+import React, {useMemo, useRef, useState} from 'react';
+import {
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+  useWindowDimensions,
+} from 'react-native';
+import {BRAIN, NOTE_BY_STEM, TAG_COUNTS, TOTAL_LINKS} from './brain';
+import {SEARCH_INDEX} from './search';
+import {GraphView} from './GraphView';
+import {MarkdownView} from './markdown';
+
+const LIGHT = {
+  bg: '#f8fafc',
+  surface: '#ffffff',
+  text: '#111827',
+  secondary: '#6b7280',
+  accent: '#7c3aed',
+  border: '#e5e7eb',
+  codeBg: '#f1f5f9',
+  chipBg: '#f1f5f9',
+};
+
+const DARK = {
+  bg: '#0f172a',
+  surface: '#1e293b',
+  text: '#e5e7eb',
+  secondary: '#9ca3af',
+  accent: '#a78bfa',
+  border: '#334155',
+  codeBg: '#0f172a',
+  chipBg: '#334155',
+};
+
+export default function App() {
+  const [query, setQuery] = useState('');
+  const [selectedStem, setSelectedStem] = useState<string | null>(null);
+  const [activeTags, setActiveTags] = useState<Set<string>>(new Set());
+  const [dark, setDark] = useState(false);
+  const {width} = useWindowDimensions();
+  const narrow = width < 1000;
+  const searchRef = useRef<TextInput>(null);
+  const colors = dark ? DARK : LIGHT;
+
+  const hits = useMemo(
+    () => (query.trim() ? SEARCH_INDEX.search(query) : []),
+    [query],
+  );
+
+  const visibleNotes = useMemo(() => {
+    if (hits.length > 0) {
+      return hits.map(h => h.note);
+    }
+    if (activeTags.size > 0) {
+      return BRAIN.notes.filter(n =>
+        n.tags.some(t => activeTags.has(t)),
+      );
+    }
+    return BRAIN.notes;
+  }, [hits, activeTags]);
+
+  const selected = selectedStem ? NOTE_BY_STEM[selectedStem] : null;
+  const related = selected ? SEARCH_INDEX.related(selected.stem) : [];
+
+  const toggleTag = (tag: string) => {
+    setActiveTags(prev => {
+      const next = new Set(prev);
+      if (next.has(tag)) {
+        next.delete(tag);
+      } else {
+        next.add(tag);
+      }
+      return next;
+    });
+  };
+
+  const sidebar = (
+    <ScrollView
+      style={[
+        styles.sidebar,
+        {backgroundColor: colors.surface, borderColor: colors.border},
+      ]}>
+      <Text style={[styles.sectionTitle, {color: colors.text}]}>
+        Search — BM25, offline
+      </Text>
+      <TextInput
+        ref={searchRef}
+        value={query}
+        onChangeText={setQuery}
+        placeholder="Search the brain…"
+        placeholderTextColor={colors.secondary}
+        autoFocus
+        onSubmitEditing={() => {
+          if (hits[0]) {
+            setSelectedStem(hits[0].note.stem);
+          }
+        }}
+        style={[
+          styles.searchBox,
+          {
+            color: colors.text,
+            borderColor: colors.border,
+            backgroundColor: colors.bg,
+          },
+        ]}
+      />
+      {hits.map(h => (
+        <TouchableOpacity
+          key={h.note.stem}
+          onPress={() => setSelectedStem(h.note.stem)}
+          style={styles.hitRow}>
+          <Text style={[styles.hitTitle, {color: colors.text}]}>
+            {h.note.title}
+          </Text>
+          <Text style={[styles.hitMeta, {color: colors.secondary}]}>
+            BM25 {h.score.toFixed(2)}
+          </Text>
+        </TouchableOpacity>
+      ))}
+
+      <Text style={[styles.sectionTitle, {color: colors.text}]}>Brain</Text>
+      <Text style={[styles.stat, {color: colors.secondary}]}>
+        {BRAIN.notes.length} notes · {TOTAL_LINKS} links ·{' '}
+        {BRAIN.clusters.length} clusters · {BRAIN.orphans.length} orphans
+      </Text>
+      <Text style={[styles.stat, {color: colors.secondary}]}>
+        Snapshot {BRAIN.generated.slice(0, 10)} · re-run{' '}
+        <Text style={{fontWeight: '700'}}>npm run brain-data</Text> after
+        editing notes
+      </Text>
+
+      <Text style={[styles.sectionTitle, {color: colors.text}]}>Tags</Text>
+      <View style={styles.chips}>
+        {Object.entries(TAG_COUNTS)
+          .sort((a, b) => b[1] - a[1])
+          .map(([tag, count]) => {
+            const active = activeTags.has(tag);
+            return (
+              <TouchableOpacity
+                key={tag}
+                onPress={() => toggleTag(tag)}
+                style={[
+                  styles.chip,
+                  {
+                    backgroundColor: active ? colors.accent : colors.chipBg,
+                    borderColor: colors.border,
+                  },
+                ]}>
+                <Text
+                  style={{
+                    color: active ? '#ffffff' : colors.text,
+                    fontSize: 12,
+                  }}>
+                  #{tag} · {count}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+      </View>
+
+      <Text style={[styles.sectionTitle, {color: colors.text}]}>
+        Clusters
+      </Text>
+      {BRAIN.clusters.map(c => (
+        <TouchableOpacity
+          key={c.label}
+          onPress={() => {
+            setActiveTags(new Set());
+            if (c.members[0]) {
+              setSelectedStem(c.members[0]);
+            }
+          }}
+          style={styles.clusterRow}>
+          <Text style={[styles.clusterLabel, {color: colors.text}]}>
+            {c.label}
+          </Text>
+          <Text style={[styles.clusterMembers, {color: colors.secondary}]}>
+            {c.members.join(', ')}
+          </Text>
+        </TouchableOpacity>
+      ))}
+
+      <Text style={[styles.sectionTitle, {color: colors.text}]}>
+        Needs attention
+      </Text>
+      {BRAIN.orphans.length > 0 && (
+        <Text style={[styles.attention, {color: colors.secondary}]}>
+          Orphans ({BRAIN.orphans.length}): {BRAIN.orphans.join(', ')}
+        </Text>
+      )}
+      {BRAIN.stale.length > 0 && (
+        <Text style={[styles.attention, {color: colors.secondary}]}>
+          Stale, 90+ days ({BRAIN.stale.length}): {BRAIN.stale.join(', ')}
+        </Text>
+      )}
+      {BRAIN.suggestions.length > 0 && (
+        <Text style={[styles.attention, {color: colors.secondary}]}>
+          Link suggestions ({BRAIN.suggestions.length}):{' '}
+          {BRAIN.suggestions
+            .slice(0, 5)
+            .map(s => `${s.a} ↔ ${s.b}`)
+            .join('; ')}
+        </Text>
+      )}
+      {BRAIN.duplicates.length > 0 && (
+        <Text style={[styles.attention, {color: colors.secondary}]}>
+          Duplicates ({BRAIN.duplicates.length}):{' '}
+          {BRAIN.duplicates.map(d => `${d.a} ~ ${d.b}`).join('; ')}
+        </Text>
+      )}
+      {BRAIN.orphans.length === 0 &&
+        BRAIN.stale.length === 0 &&
+        BRAIN.suggestions.length === 0 && (
+          <Text style={[styles.attention, {color: colors.secondary}]}>
+            Nothing needs attention.
+          </Text>
+        )}
+    </ScrollView>
+  );
+
+  const reader = (
+    <ScrollView
+      style={[
+        styles.reader,
+        {backgroundColor: colors.surface, borderColor: colors.border},
+      ]}>
+      {selected ? (
+        <>
+          <Text style={[styles.noteTitle, {color: colors.text}]}>
+            {selected.title}
+          </Text>
+          <Text style={[styles.noteMeta, {color: colors.secondary}]}>
+            {selected.stem}.md · {selected.tags.map(t => `#${t}`).join(' ')}
+            {' · '}
+            {selected.links.length} links out · {selected.incoming.length} in
+          </Text>
+          <MarkdownView
+            text={selected.text}
+            colors={{
+              text: colors.text,
+              secondary: colors.secondary,
+              accent: colors.accent,
+              codeBg: colors.codeBg,
+            }}
+            onOpenNote={setSelectedStem}
+          />
+          {related.length > 0 && (
+            <>
+              <Text style={[styles.sectionTitle, {color: colors.text}]}>
+                Related
+              </Text>
+              {related.map(r => (
+                <TouchableOpacity
+                  key={r.note.stem}
+                  onPress={() => setSelectedStem(r.note.stem)}>
+                  <Text style={{color: colors.accent, paddingVertical: 2}}>
+                    {r.note.title} ({r.cosine.toFixed(2)})
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </>
+          )}
+        </>
+      ) : (
+        <>
+          <Text style={[styles.noteTitle, {color: colors.text}]}>
+            Welcome to Muse Brain
+          </Text>
+          <Text style={[styles.welcome, {color: colors.secondary}]}>
+            Pick a note from the graph, the search box, or a list.
+            Everything here is local — the notes, the search index, and
+            the graph all come from the Markdown brain bundled with this
+            app. No network, no account, no server.
+          </Text>
+          <Text style={[styles.welcome, {color: colors.secondary}]}>
+            Start with search (ranked by BM25, the same index the Python
+            ml/search.py tool uses), or explore a cluster on the left.
+          </Text>
+        </>
+      )}
+    </ScrollView>
+  );
+
+  return (
+    <View style={[styles.root, {backgroundColor: colors.bg}]}>
+      <View
+        style={[
+          styles.header,
+          {backgroundColor: colors.surface, borderColor: colors.border},
+        ]}>
+        <Text style={[styles.appTitle, {color: colors.text}]}>
+          Muse Brain
+        </Text>
+        <Text style={[styles.appSub, {color: colors.secondary}]}>
+          {visibleNotes.length} notes · local · offline
+        </Text>
+        <View style={{flex: 1}} />
+        <TouchableOpacity
+          style={[styles.themeBtn, {borderColor: colors.border}]}
+          onPress={() => setDark(d => !d)}>
+          <Text style={{color: colors.text}}>
+            {dark ? '☀ Light' : '◐ Dark'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+      <View
+        style={[
+          styles.body,
+          {flexDirection: narrow ? 'column' : 'row'},
+        ]}>
+        {sidebar}
+        <View
+          style={[
+            styles.graphPane,
+            {backgroundColor: colors.surface, borderColor: colors.border},
+          ]}>
+          <Text style={[styles.sectionTitle, {color: colors.text}]}>
+            Memory map
+          </Text>
+          <GraphView
+            selectedStem={selectedStem}
+            onSelect={setSelectedStem}
+            dark={dark}
+          />
+        </View>
+        {reader}
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  root: {flex: 1},
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    gap: 12,
+  },
+  appTitle: {fontSize: 20, fontWeight: '700'},
+  appSub: {fontSize: 13},
+  themeBtn: {
+    borderWidth: 1,
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  body: {flex: 1, gap: 0},
+  sidebar: {width: 300, borderRightWidth: 1, padding: 12},
+  graphPane: {flex: 1, borderRightWidth: 1, padding: 12, minHeight: 320},
+  reader: {width: 400, padding: 16},
+  sectionTitle: {fontSize: 13, fontWeight: '700', marginTop: 14, marginBottom: 6},
+  searchBox: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    fontSize: 14,
+  },
+  hitRow: {paddingVertical: 6, borderBottomWidth: 0},
+  hitTitle: {fontSize: 14, fontWeight: '600'},
+  hitMeta: {fontSize: 12},
+  stat: {fontSize: 13, lineHeight: 19, marginBottom: 4},
+  chips: {flexDirection: 'row', flexWrap: 'wrap', gap: 6},
+  chip: {borderWidth: 1, borderRadius: 999, paddingHorizontal: 9, paddingVertical: 4},
+  clusterRow: {paddingVertical: 5},
+  clusterLabel: {fontSize: 13, fontWeight: '600'},
+  clusterMembers: {fontSize: 12, lineHeight: 17},
+  attention: {fontSize: 12, lineHeight: 18, marginBottom: 4},
+  noteTitle: {fontSize: 26, fontWeight: '700', marginBottom: 4},
+  noteMeta: {fontSize: 12, marginBottom: 12},
+  welcome: {fontSize: 15, lineHeight: 22, marginBottom: 10},
+});
