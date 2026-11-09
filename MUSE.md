@@ -19,6 +19,8 @@ Muse in for Claude, Obsidian out. See
   `scripts/memory-map.py`. Never edited by hand.
 - `ml/` — local-first ML: TF-IDF/BM25, optional local embeddings.
 - `dashboard.html` — generated simple dashboard from the same scan.
+- `macos/` — native Swift / SwiftUI app; `.dmg` via CI (see `docs/installers.md`).
+- `windows-app/` — native React Native Windows app; the `.exe`.
 - `scan.py` — the one scan command. Stdlib only. Run: `python3 scan.py`
 - `notes/` — atomic notes. One topic per file, kebab-case names.
 - `raw/` — immutable sources. Never edited, never rewritten.
@@ -168,8 +170,11 @@ server until you ask for it.
   link suggestions, clusters, duplicates. No installs, no API.
 - `ml/embeddings.py` — optional local embeddings; absent = TF-IDF/BM25
   fallback. `scripts/memory-map.py` generates `MEMORY-MAP.md` and
-  re-runs `scan.py`. Caches in `ml/.cache/` are gitignored. Details:
-  `ml/README.md`.
+  re-runs `scan.py`. Caches in `ml/.cache/` are gitignored. Details: `ml/README.md`.
+- Apps: `app/app.py` serves the dashboard + live ML API on localhost;
+  native frontends are separate per platform — Swift/SwiftUI for the
+  macOS `.dmg` (`macos/`), React Native Windows for the `.exe`
+  (`windows-app/`). See `docs/installers.md`.
 
 ## How to add a note
 
@@ -185,6 +190,8 @@ and `[[links]]`, and regenerates `MAP.md` and `dashboard.html`. It
 prints the counts: notes, per-tag counts, links, broken links,
 orphans. `python3 scripts/memory-map.py` also regenerates the full
 `MEMORY-MAP.md` (every file, ML clusters, sources, stale flags).
+To share or move a clean copy: `python3 scripts/package.py` — a zip
+in `dist/`, no `.git`, no caches.
 
 ## Git
 

@@ -10,6 +10,33 @@ notes only — no personal data. Copy it, delete the examples, and seed
 it with your own notes. Your filled-in brain should live in a
 **private** repo; this template is the public, shareable shape.
 
+## Download / use locally
+
+No install, no account, no server — clone it (or download the ZIP)
+and it works offline.
+
+```bash
+git clone https://github.com/akshithkonda1/muse-brain-template.git
+cd muse-brain-template
+python3 scan.py
+```
+
+Or on GitHub: Code → Download ZIP, unzip, `cd` in, `python3 scan.py`.
+Requires only Python 3.10+. `ripgrep` (`rg`) is optional — plain
+`grep` works, and `ml/search.py` is the ranked search. To make a
+clean copy to share or move: `python3 scripts/package.py` (writes a
+zip to `dist/`, excluding `.git`, caches, and `SCRUB-REPORT.md`).
+Optional extras: `pip install sentence-transformers numpy` adds
+local embedding search — the brain works fully without it.
+
+Want it as an app instead of a folder? Open `dashboard.html` (the
+polished graph/search/reader UI, works from `file://`), run
+`python3 app/app.py` for the local server + live ML API, or get the
+native apps — macOS `.dmg` (Swift/SwiftUI) and Windows `.exe`
+(React Native Windows), built by GitHub Actions, see
+`docs/installers.md` (neither can be built on Linux; don't trust
+one that claims to be).
+
 What changed in the adaptation:
 
 - **Muse in for Claude.** The map file is `MUSE.md`, not `CLAUDE.md`.
@@ -41,6 +68,9 @@ What changed in the adaptation:
 | `index.md` | Hand catalog. `log.md` — append-only timeline. |
 | `rules/` | People rules + writing rules. Load only on match. |
 | `skills/` | Nine skills (`ingest`, `search`, `ml-search`, `ask`, `learn`, `rewrite`, `lint`, `commit`, `weekly-review`). Run when called. |
+| `app/` | The local app: stdlib server (`app/app.py`), polished dashboard (graph, BM25 search, Cmd+K, legend, dark/light). See `docs/installers.md` for the `.exe` / `.dmg`. |
+| `macos/` | Native Swift / SwiftUI app (macOS 14+): reads the Markdown folder off disk, BM25 search, graph, reader. Built to a `.dmg` by CI (`xcodebuild` + `hdiutil`). |
+| `windows-app/` | Native React Native Windows app: produces the Windows `.exe`. Ships a generated snapshot `src/brain-data.json` (re-run `npm run brain-data` after editing notes). |
 | `templates/` | Note templates (atomic note, daily, person, project). |
 | `scripts/dup-check.py` | Duplicate check (SHA-256 + Jaccard > 0.72). |
 | `docs/` | `attribution.md` (what was borrowed from which repo) and `commands.md` ("brain: …" trigger map). |

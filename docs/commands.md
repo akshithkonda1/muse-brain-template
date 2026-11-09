@@ -14,6 +14,10 @@ loaded); Muse reads the matching skill and follows it.
 | "brain: suggest links" | `skills/ml-search/` | Unlinked pairs worth linking (`--suggest-links`) |
 | "brain: clusters" | `skills/ml-search/` | Topic clusters from the ML step |
 | "brain: map" | — | Run `python3 scripts/memory-map.py` (regenerates MEMORY-MAP.md, MAP.md + dashboard) |
+| "brain: package" | — | Run `python3 scripts/package.py` (clean downloadable zip in `dist/`) |
+| "brain: app" | — | Run `python3 app/app.py` (local server + dashboard; `.exe`/`.dmg` in `docs/installers.md`) |
+| "brain: build dmg" | — | macOS: Swift/SwiftUI app → `.dmg` via `xcodebuild` + `hdiutil` (or CI job `build-macos`) |
+| "brain: build exe" | — | Windows: React Native Windows app → `.exe` via `run-windows --release` (or CI job `build-windows`) |
 | "brain: ask <question>" | `skills/ask/` | Cited answer from the wiki; good answers filed back |
 | "brain: learn <correction>" | `skills/learn/` | Correction → rule or memory entry, old claim struck |
 | "brain: rewrite <page>" | `skills/rewrite/` | Tighten the page in your voice, sources kept |
