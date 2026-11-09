@@ -40,8 +40,9 @@ def main() -> int:
     # note in the app gets a graph position — scan_notes() alone is
     # notes/ only and would leave wiki pages position-less.
     incoming, broken, orphans = scan.build_graph(docs)
-    positions = scan.layout_positions(docs, incoming)
     idx = Index(docs)
+    clusters = idx.clusters()
+    positions = scan.layout_positions(docs, incoming, clusters)
 
     stale_cutoff = datetime.now(timezone.utc).timestamp() - 90 * 86400
     # suggest_links() returns full doc dicts (Index mutates them in
@@ -70,8 +71,19 @@ def main() -> int:
         "positions": positions,
         "clusters": [
             {"label": c["label"], "members": c["members"]}
-            for c in idx.clusters()
+            for c in clusters
         ],
+        # Design system (docs/design-system.md): cluster colours by
+        # cluster rank, largest first; node colour is its cluster colour.
+        "clusterColors": ["#7C5CFF", "#14B8A6", "#F59E0B", "#F43F5E",
+                          "#0EA5E9", "#10B981", "#F97316", "#6366F1"],
+        "clusterIndex": {m: ci for ci, c in enumerate(clusters)
+                         for m in c.get("members", [])},
+        "hubs": sorted(
+            ({"stem": d["stem"], "title": d["title"],
+              "degree": len(d["links"]) + len(incoming.get(d["stem"], []))}
+             for d in docs),
+            key=lambda h: -h["degree"])[:8],
         "suggestions": [
             {"a": _stem(s["a"]), "b": _stem(s["b"]), "cosine": round(s["cosine"], 3),
              "shared_tags": s["shared_tags"]}

@@ -12,6 +12,8 @@ struct ContentView: View {
     @State private var query = ""
     @State private var selectedStem: String?
     @State private var activeTags: Set<String> = []
+    @State private var focusCluster: Int? = nil
+    @State private var showSuggest = false
     @State private var theme: String = "system"
     @FocusState private var searchFocused: Bool
 
@@ -30,6 +32,13 @@ struct ContentView: View {
 
     private var selectedNote: Note? {
         selectedStem.flatMap { stem in store.notes.first { $0.stem == stem } }
+    }
+
+    /// Most-connected notes first — the fastest way back into the brain.
+    private var hubs: [(note: Note, degree: Int)] {
+        store.notes.map { note in
+            (note, note.links.count + (store.incoming[note.stem] ?? []).count)
+        }.sorted { $0.degree > $1.degree }.prefix(6).map { $0 }
     }
 
     var body: some View {
@@ -113,18 +122,42 @@ struct ContentView: View {
                 }
             }
 
+            Section("Hubs — start here") {
+                ForEach(hubs, id: \.note.stem) { hub in
+                    Button {
+                        selectedStem = hub.note.stem
+                    } label: {
+                        HStack {
+                            Text(hub.note.title).font(.headline)
+                            Spacer()
+                            Text("\(hub.degree) links")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+
             Section("Clusters") {
-                ForEach(store.clusters) { cluster in
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(cluster.label).font(.headline)
-                        Text(cluster.members.joined(separator: ", "))
-                            .font(.caption).foregroundStyle(.secondary)
+                ForEach(Array(store.clusters.enumerated()), id: \.element.id) { ci, cluster in
+                    HStack(alignment: .top, spacing: 8) {
+                        Circle()
+                            .fill(BrainPalette.clusterColor(ci))
+                            .frame(width: 10, height: 10)
+                            .padding(.top, 4)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(cluster.label).font(.headline)
+                            Text(cluster.members.joined(separator: ", "))
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
                     }
                     .contentShape(Rectangle())
                     .onTapGesture {
                         activeTags = []
+                        focusCluster = (focusCluster == ci) ? nil : ci
                         if let first = cluster.members.first { selectedStem = first }
                     }
+                    .opacity(focusCluster == nil || focusCluster == ci ? 1 : 0.45)
                 }
             }
 
@@ -166,13 +199,31 @@ struct ContentView: View {
             HStack {
                 Text("Memory map").font(.headline)
                 Spacer()
-                Text("\(visibleNotes.count) notes")
+                Text("\(visibleNotes.count) notes · \(store.clusters.count) clusters")
+                    .font(.caption).foregroundStyle(.secondary)
+                Button(showSuggest ? "Hide suggestions" : "Suggestions") {
+                    showSuggest.toggle()
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+            }
+            .padding(.horizontal)
+            GraphView(store: store, selectedStem: $selectedStem,
+                      focusCluster: $focusCluster, showSuggest: $showSuggest)
+                .frame(minWidth: 320, minHeight: 320)
+            HStack(spacing: 12) {
+                ForEach(Array(store.clusters.prefix(8).enumerated()), id: \.offset) { ci, cluster in
+                    HStack(spacing: 4) {
+                        Circle().fill(BrainPalette.clusterColor(ci)).frame(width: 9, height: 9)
+                        Text(cluster.label.split(separator: ",").first.map(String.init) ?? cluster.label)
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+                Text("ring = hub (6+) · dashed = quiet note")
                     .font(.caption).foregroundStyle(.secondary)
             }
             .padding(.horizontal)
-            GraphView(store: store, selectedStem: $selectedStem)
-                .frame(minWidth: 320, minHeight: 320)
-            Text("Drag a node to move it · drag the background to pan · pinch to zoom · click a node to read it. Dashed ring = orphan.")
+            Text("Drag a node to move it · drag the background to pan · pinch to zoom · click a node to read it · click a cluster to focus it.")
                 .font(.caption).foregroundStyle(.secondary)
                 .padding(.horizontal)
         }

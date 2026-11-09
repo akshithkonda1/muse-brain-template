@@ -7,7 +7,7 @@ Walks notes/, extracts tags (#tag) and [[wiki-links]], and regenerates
 MAP.md (index by tag, link-graph summary, stats) and dashboard.html
 (note tree by tag, counts, recent notes).
 
-Stdlib only. Run from the brain folder:
+Stdlib only. Run from ~/workspace/brain/:
 
     python3 scan.py
 
@@ -247,12 +247,16 @@ def clean_text(text: str) -> str:
     return text
 
 
-def layout_positions(notes, incoming):
-    """Deterministic force layout for the graph view.
+def layout_positions(notes, incoming, clusters=None):
+    """Deterministic, cluster-aware force layout for the graph view.
 
-    Nodes start on a circle grouped by first tag; ~120 iterations of
-    repulsion + springs + centering. Seeded, so the same brain always
-    draws the same map. Returns {stem: [x, y]} in an 800x520 viewBox.
+    Cluster centres sit on a ring; nodes seed around their own
+    cluster's centre, then ~120 iterations of repulsion + link
+    springs + a pull toward the cluster centre settle them. Seeded,
+    so the same brain always draws the same map. Without clusters
+    it falls back to grouping by first tag. Returns
+    {stem: [x, y]} in an 800x520 viewBox.
+    See docs/design-system.md for the visual rules this serves.
     """
     import random as _random
 
@@ -260,20 +264,59 @@ def layout_positions(notes, incoming):
     stems = [n["stem"] for n in notes]
     if not stems:
         return {}
-    groups = {}
+    # stem -> cluster index (clusters arrive largest-first, so the
+    # index is also the colour rank in docs/design-system.md).
+    # Only clusters with 2+ members get their own territory — with
+    # 24 clusters in a small brain, singletons would otherwise crowd
+    # the ring until every hull overlaps every other. Singletons are
+    # parked on the periphery, grouped by first tag.
+    cluster_of = {}
+    cluster_list = clusters or []
+    major = [c for c in cluster_list if len(c.get("members", [])) >= 2]
+    for ci, c in enumerate(cluster_list):
+        if c not in major:
+            continue
+        for m in c.get("members", []):
+            cluster_of[m] = ci
+    if not cluster_list:
+        groups = {}
+        for n in notes:
+            key = (n["tags"] or ["notes"])[0]
+            groups.setdefault(key, []).append(n["stem"])
+        for gi, key in enumerate(groups):
+            for stem in groups[key]:
+                cluster_of[stem] = gi
+    # Peripheral groups for notes in no major cluster, keyed by tag.
+    peripheral = {}
     for n in notes:
-        key = (n["tags"] or ["notes"])[0]
-        groups.setdefault(key, []).append(n["stem"])
+        if n["stem"] not in cluster_of:
+            key = (n["tags"] or ["notes"])[0]
+            peripheral.setdefault(key, []).append(n["stem"])
+    group_order = [ci for ci in sorted({cluster_of[s] for s in cluster_of})]
+    for gi, key in enumerate(sorted(peripheral)):
+        for stem in peripheral[key]:
+            cluster_of[stem] = 1000 + gi
+    n_clusters = len(group_order) + len(peripheral)
+    # Centre for a group: major clusters on the ring, peripheral
+    # groups on a wider, fainter orbit.
+    def _centre(ci):
+        idx = group_order.index(ci) if ci in group_order else 0
+        total = max(n_clusters, 1)
+        base = (idx / total) * 2 * math.pi
+        return (400 + 165 * math.cos(base), 260 + 135 * math.sin(base))
     pos = {}
-    angle_step = 2 * math.pi / max(len(stems), 1)
     for i, stem in enumerate(stems):
-        # Group arcs around the circle so same-tag notes start together.
-        group_names = list(groups)
-        g_idx = group_names.index((next(n for n in notes if n["stem"] == stem)["tags"] or ["notes"])[0])
-        base = (g_idx / max(len(group_names), 1)) * 2 * math.pi
-        a = base + (i % 5) * 0.35
-        r = 150 + rng.uniform(-30, 30)
-        pos[stem] = [400 + r * math.cos(a), 260 + r * 0.8 * math.sin(a)]
+        ci = cluster_of.get(stem, 0)
+        if ci >= 1000:
+            # Peripheral: further out, on the tag group's own arc.
+            gi = ci - 1000
+            base = ((len(group_order) + gi) / max(n_clusters, 1)) * 2 * math.pi
+            cx, cy = 400 + 205 * math.cos(base), 260 + 165 * math.sin(base)
+        else:
+            cx, cy = _centre(ci)
+        a = rng.uniform(0, 2 * math.pi)
+        r = 28 + rng.uniform(0, 52)
+        pos[stem] = [cx + r * math.cos(a), cy + r * 0.8 * math.sin(a)]
     edges = []
     for n in notes:
         for t in n["links"]:
@@ -303,8 +346,16 @@ def layout_positions(notes, incoming):
             forces[b][0] -= fx
             forces[b][1] -= fy
         for s in stems:
-            fx = (400 - pos[s][0]) * 0.01 + forces[s][0]
-            fy = (260 - pos[s][1]) * 0.01 + forces[s][1]
+            ci = cluster_of.get(s, 0)
+            if ci >= 1000:
+                gi = ci - 1000
+                base = ((len(group_order) + gi) / max(n_clusters, 1)) * 2 * math.pi
+                ccx, ccy = 400 + 205 * math.cos(base), 260 + 165 * math.sin(base)
+            else:
+                ccx, ccy = _centre(ci)
+            # Pull toward the cluster centre, plus a gentle centre pull.
+            fx = (ccx - pos[s][0]) * 0.03 + (400 - pos[s][0]) * 0.005 + forces[s][0]
+            fy = (ccy - pos[s][1]) * 0.03 + (260 - pos[s][1]) * 0.005 + forces[s][1]
             pos[s][0] = min(770, max(30, pos[s][0] + fx))
             pos[s][1] = min(490, max(30, pos[s][1] + fy))
     return {s: [round(x, 1), round(y, 1)] for s, (x, y) in pos.items()}
@@ -363,7 +414,27 @@ def render_dashboard(notes, tag_counts, incoming, broken, orphans, now):
                  "your my me him them us what which who whom when where why "
                  "how all any both each few more most other some such only "
                  "own same too very just also").split(),
-        "positions": layout_positions(docs, incoming),
+        "positions": layout_positions(docs, incoming, data["clusters"]),
+        # Design system (docs/design-system.md): cluster colours are
+        # assigned by cluster rank, largest first; node colour is its
+        # cluster colour. Hubs are the most-connected notes.
+        "clusterColors": ["#7C5CFF", "#14B8A6", "#F59E0B", "#F43F5E",
+                          "#0EA5E9", "#10B981", "#F97316", "#6366F1"],
+        "clusterIndex": {m: ci for ci, c in enumerate(data["clusters"])
+                         for m in c.get("members", [])},
+        "hubs": sorted(
+            ({"stem": d["stem"], "title": d["title"],
+              "degree": len(d["links"]) + len(incoming.get(d["stem"], []))}
+             for d in docs),
+            key=lambda h: -h["degree"])[:8],
+        "palette": {
+            "accent": "#6C4CF1", "accentDark": "#9B7FF5",
+            "bgLight": "#F6F5F1", "bgDark": "#0C0B10",
+            "surfaceLight": "#FFFFFF", "surfaceDark": "#16151D",
+            "inkLight": "#17141F", "inkDark": "#F4F2FA",
+            "mutedLight": "#6F6A7E", "mutedDark": "#A19CB6",
+            "warn": "#B45309", "bad": "#C22744",
+        },
     }
     payload = json.dumps(brain_json, ensure_ascii=False).replace("</", "<\\/")
     html_text = template_path.read_text(encoding="utf-8")

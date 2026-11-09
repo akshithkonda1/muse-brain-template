@@ -1,37 +1,80 @@
-// GraphView.tsx — the memory-map graph for React Native Windows.
+// GraphView.tsx — the premium memory-map graph for React Native Windows.
 //
 // SVG nodes = notes, lines = [[wiki-links]]. Drag the background to
-// pan, tap a node to read it, zoom with the +/- buttons. Node colour
-// = first tag; dashed ring = orphan. Positions come from the bundled
-// brain-data.json (seeded force layout from scan.py).
+// pan, tap a node to read it, zoom with the +/- buttons. Colour is
+// cluster colour (docs/design-system.md): the same eight hues, in the
+// same rank order, as the web dashboard and the Mac app. Node size =
+// connections; a ring marks a hub (6+). Cluster hulls show each
+// cluster's territory; dashed amber rings are quiet notes (no links
+// yet) — invitations, not errors. Positions come from the bundled
+// brain-data.json (cluster-aware force layout from scan.py).
 
 import React, {useMemo, useRef, useState} from 'react';
 import {PanResponder, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
-import Svg, {Circle, Line, G, Text as SvgText} from 'react-native-svg';
-import {BRAIN, NOTE_BY_STEM} from './brain';
+import Svg, {Circle, Line, G, Polygon, Text as SvgText} from 'react-native-svg';
+import {
+  BRAIN,
+  NOTE_BY_STEM,
+  CLUSTER_COLORS,
+  clusterColorFor,
+  degreeOf,
+} from './brain';
 
-const TAG_COLORS = [
-  '#7c3aed', '#0d9488', '#ea580c', '#16a34a', '#92400e',
-  '#2563eb', '#db2777', '#0891b2', '#059669', '#6b7280',
-];
+type Pt = [number, number];
 
-function colorFor(tags: string[]): string {
-  const key = tags[0] ?? 'notes';
-  let h = 0;
-  for (let i = 0; i < key.length; i++) {
-    h = (h * 31 + key.charCodeAt(i)) >>> 0;
+function hull(points: Pt[], pad: number): Pt[] {
+  const pts = [...points].sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  if (pts.length < 3) {
+    return pts;
   }
-  return TAG_COLORS[h % TAG_COLORS.length];
+  const cross = (o: Pt, a: Pt, b: Pt) =>
+    (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const lower: Pt[] = [];
+  for (const p of pts) {
+    while (
+      lower.length >= 2 &&
+      cross(lower[lower.length - 2], lower[lower.length - 1], p) <= 0
+    ) {
+      lower.pop();
+    }
+    lower.push(p);
+  }
+  const upper: Pt[] = [];
+  for (let i = pts.length - 1; i >= 0; i--) {
+    const p = pts[i];
+    while (
+      upper.length >= 2 &&
+      cross(upper[upper.length - 2], upper[upper.length - 1], p) <= 0
+    ) {
+      upper.pop();
+    }
+    upper.push(p);
+  }
+  lower.pop();
+  upper.pop();
+  const h = lower.concat(upper);
+  const cx = h.reduce((s, p) => s + p[0], 0) / h.length;
+  const cy = h.reduce((s, p) => s + p[1], 0) / h.length;
+  return h.map(([x, y]) => {
+    const dx = x - cx;
+    const dy = y - cy;
+    const d = Math.hypot(dx, dy) || 1;
+    return [x + (dx / d) * pad, y + (dy / d) * pad] as Pt;
+  });
 }
 
 export function GraphView({
   selectedStem,
   onSelect,
   dark,
+  focusCluster,
+  showSuggest,
 }: {
   selectedStem: string | null;
   onSelect: (stem: string) => void;
   dark: boolean;
+  focusCluster: number | null;
+  showSuggest: boolean;
 }) {
   const [pan, setPan] = useState({x: 0, y: 0});
   const [scale, setScale] = useState(1);
@@ -104,6 +147,10 @@ export function GraphView({
     return out;
   }, []);
 
+  const isDim = (stem: string) =>
+    focusCluster !== null &&
+    !(BRAIN.clusters[focusCluster]?.members.includes(stem) ?? false);
+
   const stroke = dark ? '#9ca3af' : '#6b7280';
   return (
     <View style={styles.container}>
@@ -128,15 +175,74 @@ export function GraphView({
           <Text style={styles.zoomText}>Reset</Text>
         </TouchableOpacity>
         <Text style={[styles.hint, {color: stroke}]}>
-          Drag to pan · tap a node to read it · dashed = orphan
+          Drag to pan · tap a node to read it · dashed = quiet note
         </Text>
       </View>
       <View style={{flex: 1}} {...panResponder.panHandlers}>
-        <Svg width="100%" height="100%" viewBox="0 0 800 520">
+        <Svg width="100%" height="100%" viewBox="0 0 800 560">
           <G
             transform={`translate(${pan.x + 400 * (1 - scale)}, ${
               pan.y + 260 * (1 - scale)
             }) scale(${scale})`}>
+            {[...BRAIN.clusters]
+              .map((c, i) => ({c, i}))
+              .sort((a, b) => b.c.members.length - a.c.members.length)
+              .map(({c, i}) => {
+                const pts = c.members
+                  .map(m => BRAIN.positions[m])
+                  .filter((p): p is [number, number] => Boolean(p));
+                if (pts.length < 3) {
+                  return null;
+                }
+                const col = CLUSTER_COLORS[i % CLUSTER_COLORS.length];
+                const h = hull(pts, 26);
+                const top = h.reduce((a, p) => (p[1] < a[1] ? p : a), h[0]);
+                return (
+                  <G
+                    key={'hull-' + c.label}
+                    opacity={focusCluster !== null && focusCluster !== i ? 0.15 : 1}>
+                    <Polygon
+                      points={h.map(p => p.map(v => v.toFixed(1)).join(',')).join(' ')}
+                      fill={col}
+                      fillOpacity={0.07}
+                      stroke={col}
+                      strokeOpacity={0.45}
+                      strokeWidth={1.4}
+                      strokeDasharray="6 4"
+                    />
+                    <SvgText
+                      x={top[0]}
+                      y={top[1] - 8}
+                      fontSize={11}
+                      fontWeight="700"
+                      fill={col}
+                      textAnchor="middle">
+                      {c.label.toUpperCase()}
+                    </SvgText>
+                  </G>
+                );
+              })}
+            {showSuggest &&
+              BRAIN.suggestions.map(s => {
+                const a = BRAIN.positions[s.a];
+                const b = BRAIN.positions[s.b];
+                if (!a || !b) {
+                  return null;
+                }
+                return (
+                  <Line
+                    key={'suggest-' + s.a + '-' + s.b}
+                    x1={a[0]}
+                    y1={a[1]}
+                    x2={b[0]}
+                    y2={b[1]}
+                    stroke="#7C5CFF"
+                    strokeOpacity={0.65}
+                    strokeWidth={1.2}
+                    strokeDasharray="4 3"
+                  />
+                );
+              })}
             {edges.map(e => (
               <Line
                 key={e.key}
@@ -145,7 +251,7 @@ export function GraphView({
                 x2={e.b[0]}
                 y2={e.b[1]}
                 stroke={stroke}
-                strokeOpacity={0.45}
+                strokeOpacity={isDim(e.key.split('->')[0]) ? 0.06 : 0.35}
                 strokeWidth={1}
               />
             ))}
@@ -156,37 +262,64 @@ export function GraphView({
               }
               const isOrphan = BRAIN.orphans.includes(note.stem);
               const isSelected = note.stem === selectedStem;
-              const r = 7 + Math.min(6, note.incoming.length);
+              const deg = degreeOf(note.stem);
+              const r = 8 + Math.min(8, deg);
+              const col = clusterColorFor(note.stem, note.tags);
               const label =
                 note.title.length > 22
                   ? note.title.slice(0, 21) + '…'
                   : note.title;
               return (
-                <G key={note.stem}>
+                <G
+                  key={note.stem}
+                  opacity={isDim(note.stem) ? 0.18 : 1}>
+                  {deg >= 6 && (
+                    <Circle
+                      cx={pos[0]}
+                      cy={pos[1]}
+                      r={r + 4.5}
+                      fill="none"
+                      stroke={col}
+                      strokeOpacity={0.55}
+                      strokeWidth={1.4}
+                    />
+                  )}
+                  {isSelected && (
+                    <Circle
+                      cx={pos[0]}
+                      cy={pos[1]}
+                      r={r + 7}
+                      fill="none"
+                      stroke="#7C5CFF"
+                      strokeOpacity={0.35}
+                      strokeWidth={5}
+                    />
+                  )}
                   <Circle
                     cx={pos[0]}
                     cy={pos[1]}
                     r={r}
-                    fill={isOrphan ? 'none' : colorFor(note.tags)}
-                    stroke={isOrphan ? '#f59e0b' : 'none'}
-                    strokeWidth={isOrphan ? 2 : 0}
-                    strokeDasharray={isOrphan ? '4 3' : undefined}
+                    fill={isOrphan ? 'none' : col}
+                    stroke={isOrphan ? '#f59e0b' : isSelected ? '#7C5CFF' : 'none'}
+                    strokeWidth={isOrphan || isSelected ? 2 : 0}
+                    strokeDasharray={isOrphan ? '3 2' : undefined}
                     onPress={() => onSelect(note.stem)}
                   />
                   {isSelected && (
                     <Circle
                       cx={pos[0]}
                       cy={pos[1]}
-                      r={r + 4}
+                      r={r}
                       fill="none"
-                      stroke="#7c3aed"
+                      stroke="#7C5CFF"
                       strokeWidth={2.5}
                     />
                   )}
                   <SvgText
-                    x={pos[0] + r + 5}
+                    x={pos[0] + r + 7}
                     y={pos[1] + 4}
                     fontSize={11}
+                    fontWeight="600"
                     fill={dark ? '#e5e7eb' : '#111827'}>
                     {label}
                   </SvgText>

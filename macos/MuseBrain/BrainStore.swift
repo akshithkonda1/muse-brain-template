@@ -127,7 +127,7 @@ final class BrainStore: ObservableObject {
         clusters = idx.clusters()
         suggestions = idx.suggestLinks()
         duplicates = idx.duplicates()
-        positions = Self.layoutPositions(notes: notes)
+        positions = Self.layoutPositions(notes: notes, clusters: clusters)
         loadError = nil
     }
 
@@ -185,23 +185,58 @@ final class BrainStore: ObservableObject {
         }
     }
 
-    // MARK: - Graph layout (seeded force layout, port of scan.py)
+    // MARK: - Graph layout (seeded, cluster-aware force layout, port of scan.py)
+    //
+    // Cluster centres sit on a ring; nodes seed around their own
+    // cluster's centre, then force iterations (repulsion + link
+    // springs + a pull toward the cluster centre) settle them.
+    // Same brain, same map. Colours follow docs/design-system.md:
+    // cluster rank = colour rank.
 
     /// Deterministic positions in an 800x520 space. Same brain, same map.
-    static func layoutPositions(notes: [Note]) -> [String: CGPoint] {
+    static func layoutPositions(notes: [Note], clusters: [Cluster] = []) -> [String: CGPoint] {
         guard !notes.isEmpty else { return [:] }
         var rng = SeededRandom(seed: 7)
         let stems = notes.map { $0.stem }
+        // Only clusters with 2+ members get their own territory —
+        // singletons are parked on the periphery, grouped by first tag.
+        var clusterOf: [String: Int] = [:]
+        let major = clusters.filter { $0.members.count >= 2 }
+        for (ci, c) in clusters.enumerated() where major.contains(c) {
+            for m in c.members { clusterOf[m] = ci }
+        }
+        if clusters.isEmpty {
+            let groups = Dictionary(grouping: notes) { $0.tags.first ?? "notes" }
+            let names = Array(groups.keys)
+            for (gi, key) in names.enumerated() {
+                for note in groups[key] ?? [] { clusterOf[note.stem] = gi }
+            }
+        }
+        var peripheral: [String: [String]] = [:]
+        for note in notes where clusterOf[note.stem] == nil {
+            peripheral[note.tags.first ?? "notes", default: []].append(note.stem)
+        }
+        let groupOrder = Array(Set(clusterOf.values)).sorted()
+        for (gi, key) in peripheral.keys.sorted().enumerated() {
+            for stem in peripheral[key] ?? [] { clusterOf[stem] = 1000 + gi }
+        }
+        let nGroups = groupOrder.count + peripheral.count
+        func clusterCenter(_ ci: Int) -> CGPoint {
+            if ci >= 1000 {
+                let gi = ci - 1000
+                let base = Double(groupOrder.count + gi) / Double(max(nGroups, 1)) * 2 * Double.pi
+                return CGPoint(x: 400 + 205 * cos(base), y: 260 + 165 * sin(base))
+            }
+            let idx = groupOrder.firstIndex(of: ci) ?? 0
+            let base = Double(idx) / Double(max(nGroups, 1)) * 2 * Double.pi
+            return CGPoint(x: 400 + 165 * cos(base), y: 260 + 135 * sin(base))
+        }
         var pos: [String: CGPoint] = [:]
-        let groups = Dictionary(grouping: notes) { $0.tags.first ?? "notes" }
-        let groupNames = Array(groups.keys)
-        for (i, note) in notes.enumerated() {
-            let key = note.tags.first ?? "notes"
-            let gIdx = groupNames.firstIndex(of: key) ?? 0
-            let base = Double(gIdx) / Double(max(groupNames.count, 1)) * 2 * Double.pi
-            let a = base + Double(i % 5) * 0.35
-            let r = 150 + rng.next() * 60 - 30
-            pos[note.stem] = CGPoint(x: 400 + r * cos(a), y: 260 + r * 0.8 * sin(a))
+        for note in notes {
+            let cc = clusterCenter(clusterOf[note.stem] ?? 0)
+            let a = rng.next() * 2 * Double.pi
+            let r = 28 + rng.next() * 52
+            pos[note.stem] = CGPoint(x: cc.x + r * cos(a), y: cc.y + r * 0.8 * sin(a))
         }
         var edges: [(String, String)] = []
         for note in notes {
@@ -231,8 +266,9 @@ final class BrainStore: ObservableObject {
                 forces[b]!.x -= f * dx / dist; forces[b]!.y -= f * dy / dist
             }
             for s in stems {
-                let fx = (400 - pos[s]!.x) * 0.01 + forces[s]!.x
-                let fy = (260 - pos[s]!.y) * 0.01 + forces[s]!.y
+                let cc = clusterCenter(clusterOf[s] ?? 0)
+                let fx = (cc.x - pos[s]!.x) * 0.03 + (400 - pos[s]!.x) * 0.005 + forces[s]!.x
+                let fy = (cc.y - pos[s]!.y) * 0.03 + (260 - pos[s]!.y) * 0.005 + forces[s]!.y
                 pos[s]!.x = min(770, max(30, pos[s]!.x + fx))
                 pos[s]!.y = min(490, max(30, pos[s]!.y + fy))
             }
