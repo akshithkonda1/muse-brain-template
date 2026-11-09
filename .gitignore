@@ -1,0 +1,17 @@
+# .gitignore — Muse Brain
+
+.DS_Store
+*.swp
+*~
+__pycache__/
+*.pyc
+node_modules/
+.env
+*.key
+*.pem
+credentials*
+*secret*
+
+# Staging audit only — never push this file. It names the private
+# brain and the person it was scrubbed from.
+SCRUB-REPORT.md
