@@ -43,7 +43,7 @@ notes/ only (0). Same notes, different scope.
 
 Requirements: Windows 10/11, Node 20 LTS, Visual Studio 2022 with
 the **Desktop development with C++** workload (GitHub's
-`windows-latest` runners already have it).
+`windows-2022` runners already have it).
 
 ```powershell
 git clone https://github.com/akshithkonda1/muse-brain-template.git
@@ -64,7 +64,7 @@ the `windows\` native project (C++ / MSBuild); it is not committed
 ## The .exe from GitHub Actions
 
 `.github/workflows/build.yml`, job `build-windows`, runs on
-`windows-latest`: installs Node 20, `npm ci`, regenerates
+`windows-2022`: installs Node 20, `npm ci`, regenerates
 `brain-data.json`, runs the init + release build, and uploads the
 `MuseBrain` Release folder (`.exe` + DLLs) as an artifact. Run it
 from the repo's **Actions** tab (workflow_dispatch) and download the

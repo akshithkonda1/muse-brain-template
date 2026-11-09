@@ -3,7 +3,11 @@ name: Build installers
 # Builds BOTH installers on their native runners — neither can be
 # built on Linux, so this workflow is the honest path (see
 # docs/installers.md):
-#   windows-latest + React Native Windows -> MuseBrain.exe
+#   windows-2022 + React Native Windows -> MuseBrain.exe
+#   (NOT windows-latest: since June 2026 it ships VS 2026 (18.x),
+#   and the RNW 0.76 CLI only finds MSBuild/VCTools for VS 17.11+
+#   (VS 2022). windows-2022 still ships VS 2022 17.14. Revisit
+#   when RNW supports VS 2026.)
 #   macos-latest + Swift/SwiftUI + xcodebuild + hdiutil -> MuseBrain.dmg
 # Frontends stay separate and native per platform; they share only
 # the local Markdown brain + ML + memory-map data layer.
@@ -37,7 +41,8 @@ permissions:
 
 jobs:
   build-windows:
-    runs-on: windows-latest
+    # Pinned: windows-latest now ships VS 2026; RNW 0.76 needs VS 2022.
+    runs-on: windows-2022
     steps:
       - uses: actions/checkout@v5
       - name: Set up Node 20
