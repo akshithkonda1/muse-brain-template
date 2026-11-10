@@ -35,10 +35,21 @@ struct ContentView: View {
     }
 
     /// Most-connected notes first — the fastest way back into the brain.
+    /// Broken into named steps with explicit tuple labels: the chained
+    /// map/sorted/prefix/map on an unlabeled tuple made the compiler
+    /// unable to type-check the expression in reasonable time.
     private var hubs: [(note: Note, degree: Int)] {
-        store.notes.map { note in
-            (note, note.links.count + (store.incoming[note.stem] ?? []).count)
-        }.sorted { $0.degree > $1.degree }.prefix(6).map { $0 }
+        let scored: [(note: Note, degree: Int)] = store.notes.map { note in
+            let incomingCount = (store.incoming[note.stem] ?? []).count
+            return (note: note, degree: note.links.count + incomingCount)
+        }
+        let ranked = scored.sorted { $0.degree > $1.degree }
+        return Array(ranked.prefix(6))
+    }
+
+    /// Total outgoing links across all notes.
+    private var totalLinks: Int {
+        store.notes.reduce(0) { $0 + $1.links.count }
     }
 
     var body: some View {
@@ -103,7 +114,7 @@ struct ContentView: View {
 
             Section("Brain") {
                 LabeledContent("Notes", value: "\(store.notes.count)")
-                LabeledContent("Links", value: "\(store.notes.map { $0.links.count }.reduce(0, +))")
+                LabeledContent("Links", value: "\(totalLinks)")
                 LabeledContent("Clusters", value: "\(store.clusters.count)")
                 LabeledContent("Orphans", value: "\(store.orphans.count)")
             }

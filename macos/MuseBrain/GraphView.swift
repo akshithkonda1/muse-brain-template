@@ -163,7 +163,7 @@ struct GraphView: View {
                             width: (radius + 4.5) * 2, height: (radius + 4.5) * 2))
                         context.stroke(ring, with: .color(col.opacity(0.55)), lineWidth: 1.4)
                     }
-                    var circle = Path(ellipseIn: CGRect(
+                    let circle = Path(ellipseIn: CGRect(
                         x: center.x - radius, y: center.y - radius,
                         width: radius * 2, height: radius * 2))
                     if isOrphan {
@@ -176,7 +176,7 @@ struct GraphView: View {
                         }
                     }
                     if isSelected {
-                        var glow = Path(ellipseIn: CGRect(
+                        let glow = Path(ellipseIn: CGRect(
                             x: center.x - radius - 7, y: center.y - radius - 7,
                             width: (radius + 7) * 2, height: (radius + 7) * 2))
                         context.stroke(glow, with: .color(.accentColor.opacity(0.35)), lineWidth: 5)

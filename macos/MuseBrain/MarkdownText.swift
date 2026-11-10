@@ -35,7 +35,7 @@ struct MarkdownText: View {
     /// [[target]] -> [target](brain://target); leaves code spans alone
     /// well enough for note text (notes rarely nest links in code).
     static func rewritten(_ text: String) -> String {
-        var out = text
+        let out = text
         let pattern = "\\[\\[([^\\]|#]+)(?:#[^\\]]*)?(?:\\|[^\\]]*)?\\]\\]"
         guard let regex = try? NSRegularExpression(pattern: pattern) else { return text }
         let range = NSRange(out.startIndex..., in: out)
