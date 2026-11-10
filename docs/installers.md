@@ -29,9 +29,9 @@ share only the Markdown brain + ML + memory-map data layer:
 
 | # | Repo | Installer | Stack | Built by |
 |---|---|---|---|---|
-| 1 | `muse-brain` (private) | Windows `.exe` | React Native Windows | GitHub Actions `windows-latest` |
+| 1 | `muse-brain` (private) | Windows `.exe` | React Native Windows | GitHub Actions `windows-2022` |
 | 2 | `muse-brain` (private) | macOS `.dmg` | Swift / SwiftUI + xcodebuild | GitHub Actions `macos-latest` |
-| 3 | `muse-brain-template` (public, this repo) | Windows `.exe` | React Native Windows | GitHub Actions `windows-latest` |
+| 3 | `muse-brain-template` (public, this repo) | Windows `.exe` | React Native Windows | GitHub Actions `windows-2022` |
 | 4 | `muse-brain-template` (public, this repo) | macOS `.dmg` | Swift / SwiftUI + xcodebuild | GitHub Actions `macos-latest` |
 
 The template installers (rows 3–4) contain only the generic example
@@ -53,7 +53,7 @@ otherwise is faking it:
 - The honest paths to real installers:
   1. **GitHub Actions (already wired):**
      `.github/workflows/build.yml` has two jobs — `build-windows`
-     (Node 20 → `npm ci` → `react-native-windows-init` →
+     (Node 20 → `npm ci` → `react-native init-windows` →
      `run-windows --release` → `MuseBrain.exe` + DLLs) and
      `build-macos` (`xcodebuild` → `MuseBrain.app` → `hdiutil` →
      `MuseBrain.dmg`). It runs on every push to `main` and on demand
@@ -64,7 +64,7 @@ otherwise is faking it:
   2. **By hand on the native machine:**
      - Windows: see `windows-app/README.md`
        (`npm ci` → `npm run brain-data` →
-       `react-native-windows-init` → `run-windows --release` →
+       `react-native init-windows` → `run-windows --release` →
        `windows\x64\Release\MuseBrain\MuseBrain.exe`).
      - Mac: see `macos/README.md`
        (`xcodebuild … build`, then stage + `hdiutil create` →

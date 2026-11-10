@@ -1,0 +1,118 @@
+name: Build installers
+
+# Builds BOTH installers on their native runners — neither can be
+# built on Linux, so this workflow is the honest path (see
+# docs/installers.md):
+#   windows-2022 + React Native Windows -> MuseBrain.exe
+#   (NOT windows-latest: since June 2026 it ships VS 2026 (18.x),
+#   and the RNW 0.76 CLI only finds MSBuild/VCTools for VS 17.11+
+#   (VS 2022). windows-2022 still ships VS 2022 17.14. Revisit
+#   when RNW supports VS 2026.)
+#   macos-latest + Swift/SwiftUI + xcodebuild + hdiutil -> MuseBrain.dmg
+# Frontends stay separate and native per platform; they share only
+# the local Markdown brain + ML + memory-map data layer.
+#
+# Runs on every push to main (for app/ml/scan/scripts/macos/
+# windows-app changes) and on demand (workflow_dispatch). Artifacts
+# stay in this repo's Actions tab: the private brain's installers
+# are never published; the template's are public, like the repo.
+#
+# Both installers are UNSIGNED. Windows SmartScreen and macOS
+# Gatekeeper will warn on first run — right-click -> Open (macOS)
+# or "Run anyway" (Windows). Signing needs your certificates;
+# see docs/installers.md.
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "app/**"
+      - "macos/**"
+      - "windows-app/**"
+      - "ml/**"
+      - "scan.py"
+      - "scripts/**"
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-windows:
+    # Pinned: windows-latest now ships VS 2026; RNW 0.76 needs VS 2022.
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v5
+      - name: Set up Node 20
+        uses: actions/setup-node@v5
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: windows-app/package-lock.json
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install JS dependencies
+        working-directory: windows-app
+        run: npm ci
+      - name: Regenerate the bundled brain snapshot
+        run: python windows-app/scripts/generate-brain-data.py
+      - name: Generate the native Windows project
+        working-directory: windows-app
+        # windows/ is NOT committed — init regenerates it every build.
+        # NOTE: react-native-windows-init only supports RNW <= 0.75.
+        # For 0.76+ the supported command is `react-native init-windows`
+        # (ships with react-native-windows itself).
+        run: npx react-native init-windows --overwrite
+      - name: Build the .exe (Release, x64)
+        working-directory: windows-app
+        run: npx react-native run-windows --release --arch x64 --no-packager --no-launch
+      - name: Smoke-test the .exe
+        run: |
+          $exe = "windows-app\windows\x64\Release\MuseBrain\MuseBrain.exe"
+          if (-not (Test-Path $exe)) { throw "exe not found: $exe" }
+          $p = Start-Process -FilePath $exe -PassThru
+          Start-Sleep -Seconds 8
+          if ($p.HasExited) { throw "exe exited immediately" }
+          Stop-Process -Id $p.Id -Force
+      - name: Upload the .exe (+ DLLs)
+        uses: actions/upload-artifact@v5
+        with:
+          name: MuseBrain-windows-exe
+          path: windows-app/windows/x64/Release/MuseBrain
+          if-no-files-found: error
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer || xcodebuild -version
+      - name: Build the .app (Release, unsigned)
+        run: |
+          xcodebuild -project macos/MuseBrain.xcodeproj \
+            -scheme MuseBrain -configuration Release \
+            -derivedDataPath build CODE_SIGNING_ALLOWED=NO build
+          ls -lh build/Build/Products/Release/MuseBrain.app
+      - name: Build the .dmg
+        run: |
+          mkdir -p dmg-staging dmg-staging/Brain dist
+          cp -R build/Build/Products/Release/MuseBrain.app dmg-staging/
+          # Ship the brain folder alongside the app, so the app finds
+          # it as "Brain" next to itself on first launch.
+          rsync -a --exclude=.git --exclude=__pycache__ --exclude=dist \
+            --exclude=ml/.cache --exclude=.github --exclude=build \
+            --exclude=dmg-staging . dmg-staging/Brain/
+          ln -s /Applications dmg-staging/Applications
+          hdiutil create -volname "MuseBrain" -srcfolder dmg-staging \
+            -ov -format UDZO dist/MuseBrain.dmg
+          ls -lh dist/
+      - name: Upload the .dmg
+        uses: actions/upload-artifact@v5
+        with:
+          name: MuseBrain-macos-dmg
+          path: dist/MuseBrain.dmg
+          if-no-files-found: error

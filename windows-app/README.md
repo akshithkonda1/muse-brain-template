@@ -43,28 +43,28 @@ notes/ only (0). Same notes, different scope.
 
 Requirements: Windows 10/11, Node 20 LTS, Visual Studio 2022 with
 the **Desktop development with C++** workload (GitHub's
-`windows-latest` runners already have it).
+`windows-2022` runners already have it).
 
 ```powershell
 git clone https://github.com/akshithkonda1/muse-brain-template.git
 cd muse-brain\windows-app
 npm ci
 npm run brain-data
-npx react-native-windows-init --overwrite --version 0.76.5
+npx react-native init-windows --overwrite
 npx react-native run-windows --release --arch x64 --no-packager --no-launch
 ```
 
 The built app lands in
 `windows-app\windows\x64\Release\MuseBrain\MuseBrain.exe`
 (next to its DLLs — ship the whole `MuseBrain` folder, not the
-`.exe` alone). The first `react-native-windows-init` run generates
+`.exe` alone). The first `react-native init-windows` run generates
 the `windows\` native project (C++ / MSBuild); it is not committed
 — the workflow regenerates it every build.
 
 ## The .exe from GitHub Actions
 
 `.github/workflows/build.yml`, job `build-windows`, runs on
-`windows-latest`: installs Node 20, `npm ci`, regenerates
+`windows-2022`: installs Node 20, `npm ci`, regenerates
 `brain-data.json`, runs the init + release build, and uploads the
 `MuseBrain` Release folder (`.exe` + DLLs) as an artifact. Run it
 from the repo's **Actions** tab (workflow_dispatch) and download the
