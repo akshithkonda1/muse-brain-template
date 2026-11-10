@@ -1,5 +1,147 @@
 {
- "generated": "2026-11-09T03:38:34.603673+00:00",
+ "generated": "2026-11-10T23:43:40.955342+00:00",
+ "profile": {
+  "owner": "Demo",
+  "display_name": "Demo",
+  "demo": true
+ },
+ "knows": {
+  "topics": [
+   {
+    "stem": "example-project",
+    "title": "Example project — Community Garden Tracker",
+    "tags": [
+     "ideas",
+     "projects"
+    ],
+    "area": "Ideas",
+    "area_tag": "ideas",
+    "excerpt": "A small app for tracking what was planted where in a shared community garden, and when each bed was last watered.",
+    "sources": [
+     "(Source: example — no source, do not treat as fact.)"
+    ],
+    "source_needed": false,
+    "degree": 3,
+    "links": [
+     "example-person"
+    ],
+    "incoming": [
+     "example-person",
+     "walrus-second-brain-post"
+    ],
+    "cluster": {
+     "index": 0,
+     "label": "never, garden, person"
+    }
+   },
+   {
+    "stem": "example-person",
+    "title": "Example person — Jordan Lee",
+    "tags": [
+     "people"
+    ],
+    "area": "People",
+    "area_tag": "people",
+    "excerpt": "A friend who shares the community garden plot. (Source: example — no source, do not treat as fact.)",
+    "sources": [
+     "(Source: example — no source, do not treat as fact.)",
+     "(Source: example.)"
+    ],
+    "source_needed": false,
+    "degree": 2,
+    "links": [
+     "example-project"
+    ],
+    "incoming": [
+     "example-project"
+    ],
+    "cluster": {
+     "index": 0,
+     "label": "never, garden, person"
+    }
+   },
+   {
+    "stem": "walrus-second-brain-post",
+    "title": "Walrus second-brain post",
+    "tags": [
+     "brain",
+     "notes"
+    ],
+    "area": "Brain & method",
+    "area_tag": "brain",
+    "excerpt": "- Idea: a plain folder of Markdown files plus a short map file becomes a living second brain when the agent loads the map every session. - Source: Walrus (@Walrussystems), X post, Nov 7, 2026. https://x.com/walrussyst…",
+    "sources": [
+     "Walrus (@Walrus_systems), X post, Nov 7, 2026."
+    ],
+    "source_needed": false,
+    "degree": 1,
+    "links": [
+     "example-project"
+    ],
+    "incoming": [],
+    "cluster": {
+     "index": 1,
+     "label": "map, md, second"
+    }
+   },
+   {
+    "stem": "second-brain-pattern",
+    "title": "The second-brain pattern this brain is built on",
+    "tags": [
+     "brain"
+    ],
+    "area": "Brain & method",
+    "area_tag": "brain",
+    "excerpt": "Synthesis of the design inputs (Nov 8, 2026). Sources: Walrus X post Nov 7; Ryven article Oct 27; Karpathy llm.txt gist; 8 public repos (full verdicts in [attribution](../docs/attribution.md)).",
+    "sources": [],
+    "source_needed": false,
+    "degree": 0,
+    "links": [],
+    "incoming": [],
+    "cluster": {
+     "index": 1,
+     "label": "map, md, second"
+    }
+   }
+  ],
+  "areas": [
+   {
+    "tag": "brain",
+    "label": "Brain & method",
+    "count": 2,
+    "with_source": 1,
+    "topics": [
+     "walrus-second-brain-post",
+     "second-brain-pattern"
+    ]
+   },
+   {
+    "tag": "ideas",
+    "label": "Ideas",
+    "count": 1,
+    "with_source": 1,
+    "topics": [
+     "example-project"
+    ]
+   },
+   {
+    "tag": "people",
+    "label": "People",
+    "count": 1,
+    "with_source": 1,
+    "topics": [
+     "example-person"
+    ]
+   }
+  ],
+  "coverage": {
+   "total": 4,
+   "with_source": 3,
+   "source_needed": 0,
+   "linked": 3,
+   "quiet": 1
+  }
+ },
  "source": "Markdown brain (notes/ + wiki/) via scan.py + ml/search.py",
  "notes": [
   {

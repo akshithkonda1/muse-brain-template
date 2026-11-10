@@ -53,6 +53,8 @@ def main() -> int:
         return x["stem"] if isinstance(x, dict) else x
     data = {
         "generated": datetime.now(timezone.utc).isoformat(),
+        "profile": scan.load_profile(),
+        "knows": scan.build_knows(docs, incoming, clusters),
         "source": "Markdown brain (notes/ + wiki/) via scan.py + ml/search.py",
         "notes": [
             {

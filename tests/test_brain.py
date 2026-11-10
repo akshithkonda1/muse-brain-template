@@ -145,3 +145,138 @@ def test_app_api_serves_search_and_notes():
     finally:
         proc.terminate()
         proc.wait(timeout=5)
+
+
+# --- Login + "what Muse knows" (added Nov 10) ------------------------
+
+HONEST_NOTICE = "no public Muse / Meta sign-in endpoint"
+
+
+def _dashboard_data():
+    import json as _json
+
+    subprocess.run([sys.executable, "scan.py"], cwd=ROOT,
+                   capture_output=True, text=True, check=True)
+    html = (ROOT / "dashboard.html").read_text(encoding="utf-8")
+    start = html.index("const BRAIN = ") + len("const BRAIN = ")
+    data, _ = _json.JSONDecoder().raw_decode(html[start:])
+    return html, data
+
+
+def test_knows_payload_in_dashboard():
+    """scan.py embeds the knows payload: one topic per note, with sources."""
+    _html, data = _dashboard_data()
+    knows = data["knows"]
+    assert len(knows["topics"]) == len(data["notes"]) >= 1
+    assert knows["coverage"]["total"] == len(data["notes"])
+    assert knows["areas"], "no areas grouped"
+    for topic in knows["topics"]:
+        assert topic["excerpt"], topic["stem"]
+        assert isinstance(topic["sources"], list)
+        assert topic["area_tag"] in {a["tag"] for a in knows["areas"]}
+
+
+def test_login_gate_markers_in_dashboard():
+    """Login gate + knows view are in the generated dashboard."""
+    html, _data = _dashboard_data()
+    for marker in ("loginGate", "knowsView", "setupLogin",
+                   "Sign in with Muse", "What Muse knows",
+                   "Everything stays on this device"):
+        assert marker in html, marker
+    assert HONEST_NOTICE in html
+
+
+def test_app_api_serves_knows_and_profile():
+    """The stdlib app server answers /api/knows and /api/profile."""
+    import json as _json
+    import socket
+    import time
+    import urllib.request
+
+    with socket.socket() as s:
+        s.bind(("127.0.0.1", 0))
+        port = s.getsockname()[1]
+    proc = subprocess.Popen(
+        [sys.executable, "app/app.py", "--port", str(port), "--no-browser"],
+        cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        text=True)
+    try:
+        base = f"http://127.0.0.1:{port}"
+        deadline = time.time() + 10
+        while True:
+            try:
+                with urllib.request.urlopen(base + "/", timeout=2) as r:
+                    assert r.status == 200
+                    break
+            except Exception:
+                if time.time() > deadline:
+                    raise AssertionError("app server did not start")
+                time.sleep(0.3)
+        with urllib.request.urlopen(base + "/api/knows") as r:
+            knows = _json.load(r)
+        assert len(knows["topics"]) >= 1
+        assert knows["coverage"]["total"] == len(knows["topics"])
+        with urllib.request.urlopen(base + "/api/profile") as r:
+            profile = _json.load(r)
+        assert profile["owner"] and isinstance(profile["demo"], bool)
+    finally:
+        proc.terminate()
+        proc.wait(timeout=5)
+
+
+def test_memory_map_has_knows_section():
+    """MEMORY-MAP.md carries the 'What Muse knows' section."""
+    text = (ROOT / "MEMORY-MAP.md").read_text(encoding="utf-8")
+    assert "What Muse knows" in text
+    assert "source trail" in text
+
+
+def test_profile_file_valid():
+    """brain-profile.json is a small, password-free profile."""
+    import json as _json
+
+    profile = _json.loads((ROOT / "brain-profile.json").read_text())
+    assert profile["owner"] and profile["display_name"]
+    assert isinstance(profile["demo"], bool)
+    assert "password" not in profile and "secret" not in profile
+
+
+def test_native_frontends_have_login_and_knows():
+    """Swift + React Native Windows carry the same login/knows work."""
+    auth = (ROOT / "macos/MuseBrain/AuthView.swift").read_text()
+    assert "Sign in with Muse" in auth and HONEST_NOTICE in auth
+    store = (ROOT / "macos/MuseBrain/BrainStore.swift").read_text()
+    assert "knowsTopics" in store and "knowsAreas" in store
+    content = (ROOT / "macos/MuseBrain/ContentView.swift").read_text()
+    assert "What Muse knows" in content and "Sign out" in content
+    pbx = (ROOT / "macos/MuseBrain.xcodeproj/project.pbxproj").read_text()
+    assert "AuthView.swift" in pbx
+    login = (ROOT / "windows-app/src/Login.tsx").read_text()
+    assert "Sign in with Muse" in login and HONEST_NOTICE in login
+    knows = (ROOT / "windows-app/src/KnowsView.tsx").read_text()
+    assert "What Muse knows" in knows or "WHAT MUSE KNOWS" in knows
+    app = (ROOT / "windows-app/src/App.tsx").read_text()
+    assert "LoginScreen" in app and "KnowsView" in app and "Sign out" in app
+    brain_ts = (ROOT / "windows-app/src/brain.ts").read_text()
+    assert "ProfileData" in brain_ts and "KnowsData" in brain_ts
+
+
+def test_no_passwords_or_secrets_in_repo():
+    """No credential values anywhere: the login stores no passwords."""
+    import re
+
+    secret_re = re.compile(
+        r"(?i)(api[_-]?key|passwd|client[_-]?secret)\s*[:=]\s*['\"][^'\"]+['\"]")
+    bad = []
+    for path in ROOT.rglob("*"):
+        if ".git" in path.parts or "__pycache__" in path.parts \
+                or path.suffix in {".pem", ".key"}:
+            if path.is_file() and path.suffix in {".pem", ".key"}:
+                bad.append(str(path))
+            continue
+        if path.is_file() and path.suffix in {
+                ".py", ".ts", ".tsx", ".swift", ".json", ".md", ".html"}:
+            text = path.read_text(encoding="utf-8", errors="ignore")
+            if secret_re.search(text):
+                bad.append(str(path))
+    assert not bad, bad

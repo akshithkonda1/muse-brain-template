@@ -36,6 +36,23 @@ native apps — macOS `.dmg` (Swift/SwiftUI) and Windows `.exe`
 (React Native Windows), built by GitHub Actions, see
 `docs/installers.md` (neither can be built on Linux; don't trust
 one that claims to be).
+## Sign in + what Muse knows
+
+Every frontend — web dashboard, macOS app, Windows app — opens with
+a sign-in (see `docs/login.md`). "Sign in with Muse" is an honest
+placeholder: there is no public Meta / Muse sign-in endpoint for a
+local brain yet, so it cannot log you in today and it collects no
+password. "Continue locally" is the working sign-in — a clearly-marked
+demo login for this template's example notes. After sign-in, **What
+Muse knows** is the digital copy: an interactive memory map of
+everything in the brain, browsable by area (people, projects, money,
+goals…), searchable with the local ML search, and with a source trail
+under every topic — click any node and see the underlying note, its
+source, and what Muse knows about that topic. `brain: knows <topic>`
+asks over it from the chat. The copy lives locally (Markdown files +
+local ML index, gitignored caches), never uploads anywhere, and no
+account is created.
+
 
 What changed in the adaptation:
 
@@ -68,6 +85,9 @@ What changed in the adaptation:
 | `index.md` | Hand catalog. `log.md` — append-only timeline. |
 | `rules/` | People rules + writing rules. Load only on match. |
 | `skills/` | Nine skills (`ingest`, `search`, `ml-search`, `ask`, `learn`, `rewrite`, `lint`, `commit`, `weekly-review`). Run when called. |
+| `docs/login.md` | Login design + honest limitations (no public Meta/Muse SSO endpoint yet). |
+| `skills/what-muse-knows/` | The "what Muse knows" skill. Trigger: "brain: knows <topic>". |
+| `brain-profile.json` | The signed-in profile (owner + demo flag). Never a password. |
 | `app/` | The local app: stdlib server (`app/app.py`), polished dashboard (graph, BM25 search, Cmd+K, legend, dark/light). See `docs/installers.md` for the `.exe` / `.dmg`. |
 | `macos/` | Native Swift / SwiftUI app (macOS 14+): reads the Markdown folder off disk, BM25 search, graph, reader. Built to a `.dmg` by CI (`xcodebuild` + `hdiutil`). |
 | `windows-app/` | Native React Native Windows app: produces the Windows `.exe`. Ships a generated snapshot `src/brain-data.json` (re-run `npm run brain-data` after editing notes). |

@@ -9,6 +9,8 @@ JSON API backed by the same ML code the brain already ships:
   GET /api/related?stem=..  -> notes most related to one note
   GET /api/map              -> stats, clusters, orphans, stale flags
   GET /api/notes/<stem>     -> one note's Markdown text
+  GET /api/knows           -> "What Muse knows": topics + areas + coverage
+  GET /api/profile         -> the signed-in profile (name + demo flag)
   Any other path            -> the file itself, from the repo root
 
 Everything runs on this machine. No account, no cloud, no telemetry,
@@ -103,6 +105,15 @@ class BrainHandler(SimpleHTTPRequestHandler):
                 } for s in idx.suggest_links()],
                 "duplicates": idx.duplicates(),
             })
+        elif parsed.path == "/api/profile":
+            from scan import load_profile
+            _json(self, load_profile())
+        elif parsed.path == "/api/knows":
+            from ml.search import Index as _Idx, load_corpus as _lc
+            from scan import build_graph as _bg, build_knows as _bk
+            _docs = _lc()
+            _inc, _br, _or = _bg(_docs)
+            _json(self, _bk(_docs, _inc, _Idx(_docs).clusters()))
         elif parsed.path.startswith("/api/notes/"):
             stem = parsed.path.rsplit("/", 1)[-1]
             doc = next((d for d in docs if d["stem"] == stem), None)

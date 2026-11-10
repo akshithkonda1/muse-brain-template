@@ -24,6 +24,7 @@ final class BrainStore: ObservableObject {
     @Published var duplicates: [DuplicateFlag] = []
     @Published var positions: [String: CGPoint] = [:]
     @Published var loadError: String?
+    @Published var profile = BrainProfile()
 
     private let folderKey = "muse-brain-folder"
     private var index: SearchEngine.Index?
@@ -80,6 +81,10 @@ final class BrainStore: ObservableObject {
 
     func load(from folder: URL) {
         brainFolder = folder
+        if let data = try? Data(contentsOf: folder.appendingPathComponent("brain-profile.json")),
+           let decoded = try? JSONDecoder().decode(BrainProfile.self, from: data) {
+            profile = decoded
+        }
         let fm = FileManager.default
         var loaded: [Note] = []
         for area in ["notes", "wiki"] {
@@ -133,6 +138,67 @@ final class BrainStore: ObservableObject {
 
     func refresh() {
         if let folder = brainFolder { load(from: folder) }
+    }
+
+    // MARK: - "What Muse knows" (docs/login.md)
+    //
+    // The digital copy, derived from the real notes: one entry per
+    // note with its one-line summary, source trail, area, degree and
+    // cluster. No invented facts — a topic with no source says so.
+
+    /// One-line summary: first substantive paragraph, lines joined.
+    func excerpt(for note: Note) -> String {
+        var para: [String] = []
+        var started = false
+        for raw in note.text.components(separatedBy: .newlines) {
+            let line = raw.trimmingCharacters(in: .whitespaces)
+            if line.isEmpty { if started { break } else { continue } }
+            if line.hasPrefix("#") || line.hasPrefix("Tags:") || line.hasPrefix(">") { continue }
+            started = true
+            para.append(line)
+        }
+        let joined = para.joined(separator: " ")
+            .replacingOccurrences(of: "[[", with: "")
+            .replacingOccurrences(of: "]]", with: "")
+        if joined.count > 220 { return String(joined.prefix(217)) + "…" }
+        return joined
+    }
+
+    /// Source trail: `Source:` lines + `(per …)` / `(Source: …)` inline.
+    func sources(for note: Note) -> [String] {
+        var found: [String] = []
+        for raw in note.text.components(separatedBy: .newlines) {
+            let line = raw.trimmingCharacters(in: .whitespaces)
+            if line.hasPrefix("Source:") { found.append(String(line.dropFirst(7)).trimmingCharacters(in: .whitespaces)) }
+        }
+        if let regex = try? NSRegularExpression(pattern: "\\((?:per|Source:)[^)]+\\)") {
+            let range = NSRange(note.text.startIndex..., in: note.text)
+            for m in regex.matches(in: note.text, range: range) {
+                if let r = Range(m.range, in: note.text) { found.append(String(note.text[r])) }
+            }
+        }
+        var out: [String] = []
+        for s in found.map({ $0.components(separatedBy: .whitespaces).joined(separator: " ") }) where !out.contains(s) { out.append(s) }
+        return Array(out.prefix(3))
+    }
+
+    /// Topics, most-connected first. `area` filters by first tag.
+    func knowsTopics(area: String? = nil) -> [(note: Note, excerpt: String, sources: [String], degree: Int)] {
+        notes.filter { area == nil || ($0.tags.first ?? "notes") == area }
+            .map { note in
+                (note, excerpt(for: note), sources(for: note),
+                 note.links.count + (incoming[note.stem] ?? []).count)
+            }
+            .sorted { $0.degree > $1.degree }
+    }
+
+    /// Areas (first tag) with counts and how many topics carry a source.
+    func knowsAreas() -> [(tag: String, count: Int, withSource: Int)] {
+        var groups: [String: [Note]] = [:]
+        for note in notes { groups[note.tags.first ?? "notes", default: []].append(note) }
+        return groups.map { (tag: $0.key, count: $0.value.count,
+                             withSource: $0.value.filter { !sources(for: $0).isEmpty }.count) }
+            .sorted { $0.count > $1.count }
     }
 
     // MARK: - Search (delegates to the index)

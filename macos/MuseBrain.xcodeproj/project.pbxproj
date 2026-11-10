@@ -14,6 +14,7 @@
 		B0000000000000000000005 /* MarkdownText.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0000000000000000000005 /* MarkdownText.swift */; };
 		B0000000000000000000006 /* GraphView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0000000000000000000006 /* GraphView.swift */; };
 		B0000000000000000000007 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0000000000000000000007 /* ContentView.swift */; };
+		B0000000000000000000011 /* AuthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0000000000000000000011 /* AuthView.swift */; };
 		B0000000000000000000008 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F0000000000000000000009 /* SwiftUI.framework */; };
 /* End PBXBuildFile section */
 
@@ -25,6 +26,7 @@
 		F0000000000000000000005 /* MarkdownText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownText.swift; sourceTree = "<group>"; };
 		F0000000000000000000006 /* GraphView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GraphView.swift; sourceTree = "<group>"; };
 		F0000000000000000000007 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		F0000000000000000000011 /* AuthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthView.swift; sourceTree = "<group>"; };
 		F0000000000000000000008 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		F0000000000000000000009 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		F0000000000000000000010 /* MuseBrain.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MuseBrain.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -60,6 +62,7 @@
 				F0000000000000000000005 /* MarkdownText.swift */,
 				F0000000000000000000006 /* GraphView.swift */,
 				F0000000000000000000007 /* ContentView.swift */,
+				F0000000000000000000011 /* AuthView.swift */,
 				F0000000000000000000008 /* Info.plist */,
 			);
 			path = MuseBrain;
@@ -147,6 +150,7 @@
 				B0000000000000000000005 /* MarkdownText.swift in Sources */,
 				B0000000000000000000006 /* GraphView.swift in Sources */,
 				B0000000000000000000007 /* ContentView.swift in Sources */,
+				B0000000000000000000011 /* AuthView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

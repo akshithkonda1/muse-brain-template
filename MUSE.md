@@ -29,8 +29,7 @@ Muse in for Claude, Obsidian out. See
 - `daily/` — day pages.
 - `memory.md` — durable facts, every claim with a source.
 - `index.md` — hand catalog. `log.md` — append-only timeline.
-- `rules/` — rules that load only on match. `skills/` — playbooks
-  that run only when called. `templates/` — note templates.
+- `rules/` — rules that load only on match. `skills/` — playbooks that run only when called. `templates/` — note templates.
 - `README.md` — how the system works, how to add a note, how to scan.
 
 ## The three layers (Karpathy's llm.txt pattern)
@@ -43,13 +42,11 @@ Muse in for Claude, Obsidian out. See
    conventions are, what to do on ingest / query / lint. It
    co-evolves with you over time.
 
-Plus `notes/` (the living atomic layer), `desk/`, `daily/`,
-`memory.md`, `index.md`, `log.md`.
+Plus `notes/` (the living atomic layer), `desk/`, `daily/`, `memory.md`, `index.md`, `log.md`.
 
 ## Load order (every session)
 
-1. This file. Then `index.md` — the catalog. `MAP.md` is the
-   generated link graph — read it, never edit it.
+1. This file, then `index.md` — the catalog. `MAP.md` is the generated link graph — read it, never edit it.
 2. `memory.md` — only entries relevant to the task at hand.
 3. `rules/people.md` — only when a person is involved.
 4. `rules/writing.md` — only when writing or rewriting brain pages.
@@ -61,17 +58,16 @@ Never load the whole brain. The map tells you what to load.
 
 Every note carries 1–3 tags from this set, on its `Tags:` line:
 
-`#brain` `#notes` `#projects` `#journal` `#people` `#places` `#ideas`
-`#goals` `#money`
+`#brain` `#notes` `#projects` `#journal` `#people` `#places` `#ideas` `#goals` `#money`
 
 No other tags. If a note needs a new tag, the tag set changes here first.
 
 ## Links
 
 Notes link to each other with `[[wiki-links]]` — `[[example-person]]`,
-`[[example-project]]`. The scan resolves them against `notes/*.md`
-and reports broken links and orphans in MAP.md. A note with no links
-is a smell, not a crime; an inbox note is allowed to be unlinked.
+`[[example-project]]`. The scan resolves them against `notes/*.md` and
+reports broken links and orphans in MAP.md. A note with no links is a
+smell, not a crime; an inbox note is allowed to be unlinked.
 
 ## Rules — load only on match
 
@@ -79,8 +75,7 @@ is a smell, not a crime; an inbox note is allowed to be unlinked.
 - `rules/writing.md` — voice, format, and the no-slop bar; loads when
   writing or rewriting brain pages.
 - If a rule contradicts this map, **the map wins**. Flag the conflict
-  in `log.md` and propose a fix. (The Walrus post caught exactly this:
-  a writing rule contradicting the map's naming rule.)
+  in `log.md` and propose a fix.
 
 ## Skills — run when called
 
@@ -108,32 +103,31 @@ Every claim in `memory.md`, `wiki/`, and `notes/` carries a source:
 a date plus who said it, or a file path. No source, no claim — write
 `[source needed]` and put it on the weekly-review list instead of
 inventing one. A second brain that can't say where a fact came from
-turns into a confident liar. Corrections are first-class: the old
-claim stays struck through with its source, the new claim gets the
-new source. Never silently rewrite history.
+turns into a confident liar. Corrections are first-class: the old claim
+stays struck through with its source, the new claim gets the new source.
+Never silently rewrite history.
 
 ## Atomic notes (one idea, one source, one conclusion)
 
 `notes/` pages: one idea, one source, one conclusion, max 3 tags
 from the set above, `Tags:` line at the end, `[[links]]` to related
-notes. If a note needs a fourth tag or a second idea, split it.
-Before filing a note, run `scripts/dup-check.py`: SHA-256 exact
-match, then Jaccard similarity > 0.72 = likely duplicate — link to
-the existing page instead of writing a new one.
+notes. If a note needs a fourth tag or a second idea, split it. Before
+filing a note, run `scripts/dup-check.py`: SHA-256 exact match, then
+Jaccard similarity > 0.72 = likely duplicate — link to the existing page.
 
 ## The five stages
 
-CURATE → SEARCH → REWRITE → REVIEW → OBSERVE.
-Curate sources in `raw/`; search the wiki before writing; rewrite
-pages when new evidence lands; review weekly; observe via `log.md`
-— every ingest, query, lint, and review gets one log line.
+CURATE → SEARCH → REWRITE → REVIEW → OBSERVE. Curate sources in
+`raw/`; search the wiki before writing; rewrite pages when new
+evidence lands; review weekly; observe via `log.md` — every ingest,
+query, lint, and review gets one log line.
 
 ## Weekly loop (the dream pass, without the daemon)
 
 Once a week, `weekly-review` runs: repeated corrections become
 rules; stale people get flagged; unused rules get retired; `git diff`
-gets a ≤200-word summary commit. Nothing here runs on a cron or a
-server until you ask for it.
+gets a ≤200-word summary commit. Nothing here runs on a cron or a server
+until you ask for it.
 
 ## The rules
 
@@ -159,8 +153,7 @@ server until you ask for it.
 - No secrets, credentials, or API keys in this repo. Ever.
 - Health detail stays out of the brain by design — keep clinical
   detail in your private health records, not here.
-- Work-confidential material goes in only when you explicitly put it
-  here. Never probe for it, never reconstruct it.
+- Work-confidential material goes in only when you explicitly put it here. Never probe for it.
 - Never touch a live shared document. Drafts live in the workspace
   until you say to apply them.
 
@@ -176,6 +169,15 @@ server until you ask for it.
   macOS `.dmg` (`macos/`), React Native Windows for the `.exe`
   (`windows-app/`). See `docs/installers.md`.
 
+## Login + "What Muse knows" (added Nov 10)
+
+- Every frontend opens with a sign-in (see `docs/login.md`): "Sign in
+  with Muse" is an honest placeholder — no public Meta/Muse sign-in
+  endpoint exists yet — and "Continue locally" is the working sign-in.
+- After sign-in, "What Muse knows" is the digital copy: every topic is
+  a real note with its one-line summary and source trail. `brain: knows
+  <topic>` asks over it. Nothing leaves the device.
+
 ## How to add a note
 
 1. Create `notes/<kebab-case>.md` with a `# Title` first line.
@@ -186,15 +188,12 @@ server until you ask for it.
 ## How to scan
 
 `python3 scan.py` from this folder. It walks `notes/`, extracts tags
-and `[[links]]`, and regenerates `MAP.md` and `dashboard.html`. It
-prints the counts: notes, per-tag counts, links, broken links,
-orphans. `python3 scripts/memory-map.py` also regenerates the full
-`MEMORY-MAP.md` (every file, ML clusters, sources, stale flags).
-To share or move a clean copy: `python3 scripts/package.py` — a zip
-in `dist/`, no `.git`, no caches.
+and `[[links]]`, and regenerates `MAP.md` and `dashboard.html`, printing
+the counts: notes, per-tag counts, links, broken links, orphans.
+`python3 scripts/memory-map.py` also regenerates the full `MEMORY-MAP.md`. To share
+or move a clean copy: `python3 scripts/package.py` — a zip in `dist/`, no `.git`, no caches.
 
 ## Git
 
 Commit weekly with a ≤200-word summary. `raw/` is immutable — a
-committed raw file is never force-pushed over. Never force-push.
-Never rewrite history — the log is the point.
+committed raw file is never force-pushed over. Never force-push, never rewrite history — the log is the point.

@@ -15,6 +15,8 @@ struct ContentView: View {
     @State private var focusCluster: Int? = nil
     @State private var showSuggest = false
     @State private var theme: String = "system"
+    @State private var knowsArea: String? = nil
+    @AppStorage("muse-brain-signed-in") private var signedIn = true
     @FocusState private var searchFocused: Bool
 
     private var searchHits: [(note: Note, score: Double, bm25: Double, cosine: Double)] {
@@ -74,6 +76,10 @@ struct ContentView: View {
                 }
             }
             ToolbarItem(placement: .primaryAction) {
+                Button("Sign out") { signedIn = false }
+                    .help("Sign out — ends this session")
+            }
+            ToolbarItem(placement: .primaryAction) {
                 Button("Refresh") { store.refresh() }
                     .keyboardShortcut("r", modifiers: .command)
                     .help("Re-read the brain folder from disk")
@@ -110,6 +116,45 @@ struct ContentView: View {
                 }
             } header: {
                 Text("Search — BM25, offline")
+            }
+
+            Section("What Muse knows") {
+                Text("Your digital copy — what Muse knows about you, with the sources to check it. Tap an area, then a topic.")
+                    .font(.caption).foregroundStyle(.secondary)
+                ForEach(store.knowsAreas(), id: \.tag) { area in
+                    Button {
+                        knowsArea = (knowsArea == area.tag) ? nil : area.tag
+                    } label: {
+                        HStack {
+                            Text(area.tag.capitalized).font(.headline)
+                            Spacer()
+                            Text("\(area.count) · \(area.withSource) sourced")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .opacity(knowsArea == nil || knowsArea == area.tag ? 1 : 0.45)
+                }
+                if let area = knowsArea {
+                    ForEach(store.knowsTopics(area: area).prefix(6), id: \.note.stem) { t in
+                        Button {
+                            selectedStem = t.note.stem
+                        } label: {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(t.note.title).font(.headline)
+                                Text(t.excerpt).font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                                if t.sources.isEmpty {
+                                    Text("No source on file — check before trusting.")
+                                        .font(.caption).foregroundStyle(.orange)
+                                } else {
+                                    Text("Sources: " + t.sources.joined(separator: " · "))
+                                        .font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                                }
+                            }
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
             }
 
             Section("Brain") {
@@ -250,6 +295,17 @@ struct ContentView: View {
                         .font(.caption).foregroundStyle(.secondary)
                     MarkdownText(markdown: note.text) { stem in
                         selectedStem = stem
+                    }
+                    Divider()
+                    Text("What Muse knows — sources").font(.headline)
+                    let srcs = store.sources(for: note)
+                    if srcs.isEmpty {
+                        Text("No source on file for this note — Muse knows it, but cannot show where it came from. Check before trusting.")
+                            .font(.callout).foregroundStyle(.orange)
+                    } else {
+                        ForEach(srcs, id: \.self) { src in
+                            Text("• " + src).font(.callout).foregroundStyle(.secondary)
+                        }
                     }
                     if !store.related(to: note.stem).isEmpty {
                         Divider()

@@ -59,7 +59,44 @@ export interface BrainData {
   duplicates: DuplicateData[];
 }
 
+export interface ProfileData {
+  owner: string;
+  display_name: string;
+  demo: boolean;
+}
+
+export interface KnowsTopic {
+  stem: string;
+  title: string;
+  tags: string[];
+  area: string;
+  area_tag: string;
+  excerpt: string;
+  sources: string[];
+  source_needed: boolean;
+  degree: number;
+  links: string[];
+  incoming: string[];
+  cluster: {index: number; label: string} | null;
+}
+
+export interface KnowsData {
+  topics: KnowsTopic[];
+  areas: {tag: string; label: string; count: number; with_source: number; topics: string[]}[];
+  coverage: {total: number; with_source: number; source_needed: number; linked: number; quiet: number};
+}
+
 export const BRAIN: BrainData = brainData as unknown as BrainData;
+
+/** The signed-in profile (brain-profile.json, via generate-brain-data.py). */
+export const PROFILE: ProfileData =
+  (brainData as unknown as {profile?: ProfileData}).profile ??
+  {owner: 'You', display_name: 'You', demo: false};
+
+/** "What Muse knows": topics + areas + coverage, generated from the notes. */
+export const KNOWS: KnowsData =
+  (brainData as unknown as {knows?: KnowsData}).knows ??
+  {topics: [], areas: [], coverage: {total: 0, with_source: 0, source_needed: 0, linked: 0, quiet: 0}};
 
 export const NOTE_BY_STEM: Record<string, NoteData> = Object.fromEntries(
   BRAIN.notes.map(n => [n.stem, n]),

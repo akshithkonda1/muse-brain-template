@@ -10,6 +10,8 @@ loaded); Muse reads the matching skill and follows it.
 | "brain: ingest <link, file, or text>" | `skills/ingest/` | Source → `raw/`, wiki updated, atomic note, index + log |
 | "brain: search <query>" | `skills/search/` | ripgrep + index first, then the matching pages |
 | "brain: ml search <query>" | `skills/ml-search/` | TF-IDF/BM25 ranked search; related, clusters, dups |
+| "brain: login" | — | Open the sign-in screen (see `docs/login.md`) — local-first; "Sign in with Muse" is an honest placeholder until Meta publishes an endpoint |
+| "brain: knows <topic>" | `skills/what-muse-knows/` | What Muse knows about a topic: one-line summary + source trail, from the notes |
 | "brain: related <note>" | `skills/ml-search/` | Notes most related to one note (`--related`) |
 | "brain: suggest links" | `skills/ml-search/` | Unlinked pairs worth linking (`--suggest-links`) |
 | "brain: clusters" | `skills/ml-search/` | Topic clusters from the ML step |
