@@ -37,12 +37,21 @@ export interface DuplicateData {
   score: number;
 }
 
+export interface HubData {
+  stem: string;
+  title: string;
+  degree: number;
+}
+
 export interface BrainData {
   generated: string;
   source: string;
   notes: NoteData[];
   positions: Record<string, [number, number]>;
   clusters: ClusterData[];
+  clusterColors: string[];
+  clusterIndex: Record<string, number>;
+  hubs: HubData[];
   suggestions: SuggestionData[];
   orphans: string[];
   broken: [string, string][];
@@ -67,3 +76,25 @@ export const TAG_COUNTS: Record<string, number> = (() => {
 })();
 
 export const TOTAL_LINKS = BRAIN.notes.reduce((s, n) => s + n.links.length, 0);
+
+/** Shared cluster palette (docs/design-system.md) — same order as the
+ *  dashboard and the Mac app. Colour is cluster rank, largest first. */
+export const CLUSTER_COLORS: string[] = BRAIN.clusterColors ?? [
+  '#7C5CFF', '#14B8A6', '#F59E0B', '#F43F5E',
+  '#0EA5E9', '#10B981', '#F97316', '#6366F1',
+];
+
+export function clusterColorFor(stem: string, tags: string[]): string {
+  const ci = (BRAIN.clusterIndex ?? {})[stem];
+  if (ci !== undefined) {
+    return CLUSTER_COLORS[ci % CLUSTER_COLORS.length];
+  }
+  const sortedTags = [...new Set(BRAIN.notes.flatMap(n => n.tags))].sort();
+  const idx = Math.max(0, sortedTags.indexOf(tags[0] ?? 'notes'));
+  return CLUSTER_COLORS[idx % CLUSTER_COLORS.length];
+}
+
+export function degreeOf(stem: string): number {
+  const note = NOTE_BY_STEM[stem];
+  return (note ? note.links.length : 0) + (note ? note.incoming.length : 0);
+}

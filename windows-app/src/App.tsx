@@ -16,37 +16,43 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
-import {BRAIN, NOTE_BY_STEM, TAG_COUNTS, TOTAL_LINKS} from './brain';
+import {BRAIN, NOTE_BY_STEM, TAG_COUNTS, TOTAL_LINKS, CLUSTER_COLORS} from './brain';
 import {SEARCH_INDEX} from './search';
 import {GraphView} from './GraphView';
 import {MarkdownView} from './markdown';
 
+/* Shared palette (docs/design-system.md) — same tokens as the web
+ * dashboard and the Mac app. Warm paper light, ink dark, violet accent. */
 const LIGHT = {
-  bg: '#f8fafc',
-  surface: '#ffffff',
-  text: '#111827',
-  secondary: '#6b7280',
-  accent: '#7c3aed',
-  border: '#e5e7eb',
-  codeBg: '#f1f5f9',
-  chipBg: '#f1f5f9',
+  bg: '#F6F5F1',
+  surface: '#FFFFFF',
+  surface2: '#EFEDE8',
+  text: '#17141F',
+  secondary: '#6F6A7E',
+  accent: '#6C4CF1',
+  border: '#E3E0D9',
+  codeBg: '#EFEDE8',
+  chipBg: '#EFEDE8',
 };
 
 const DARK = {
-  bg: '#0f172a',
-  surface: '#1e293b',
-  text: '#e5e7eb',
-  secondary: '#9ca3af',
-  accent: '#a78bfa',
-  border: '#334155',
-  codeBg: '#0f172a',
-  chipBg: '#334155',
+  bg: '#0C0B10',
+  surface: '#16151D',
+  surface2: '#1F1E28',
+  text: '#F4F2FA',
+  secondary: '#A19CB6',
+  accent: '#9B7FF5',
+  border: '#2B2938',
+  codeBg: '#1F1E28',
+  chipBg: '#1F1E28',
 };
 
 export default function App() {
   const [query, setQuery] = useState('');
   const [selectedStem, setSelectedStem] = useState<string | null>(null);
   const [activeTags, setActiveTags] = useState<Set<string>>(new Set());
+  const [focusCluster, setFocusCluster] = useState<number | null>(null);
+  const [showSuggest, setShowSuggest] = useState(false);
   const [dark, setDark] = useState(false);
   const {width} = useWindowDimensions();
   const narrow = width < 1000;
@@ -170,19 +176,43 @@ export default function App() {
       </View>
 
       <Text style={[styles.sectionTitle, {color: colors.text}]}>
+        Hubs — start here
+      </Text>
+      {(BRAIN.hubs ?? []).map(h => (
+        <TouchableOpacity
+          key={h.stem}
+          onPress={() => setSelectedStem(h.stem)}
+          style={styles.clusterRow}>
+          <Text style={[styles.clusterLabel, {color: colors.text}]}>
+            {h.title}
+          </Text>
+          <Text style={[styles.clusterMembers, {color: colors.secondary}]}>
+            {h.degree} links
+          </Text>
+        </TouchableOpacity>
+      ))}
+
+      <Text style={[styles.sectionTitle, {color: colors.text}]}>
         Clusters
       </Text>
-      {BRAIN.clusters.map(c => (
+      {BRAIN.clusters.map((c, i) => (
         <TouchableOpacity
           key={c.label}
           onPress={() => {
             setActiveTags(new Set());
+            setFocusCluster(focusCluster === i ? null : i);
             if (c.members[0]) {
               setSelectedStem(c.members[0]);
             }
           }}
-          style={styles.clusterRow}>
+          style={[
+            styles.clusterRow,
+            {opacity: focusCluster !== null && focusCluster !== i ? 0.45 : 1},
+          ]}>
           <Text style={[styles.clusterLabel, {color: colors.text}]}>
+            <Text style={{color: CLUSTER_COLORS[i % CLUSTER_COLORS.length]}}>
+              ●{' '}
+            </Text>
             {c.label}
           </Text>
           <Text style={[styles.clusterMembers, {color: colors.secondary}]}>
@@ -303,9 +333,20 @@ export default function App() {
           Muse Brain
         </Text>
         <Text style={[styles.appSub, {color: colors.secondary}]}>
-          {visibleNotes.length} notes · local · offline
+          Memory map · {visibleNotes.length} notes · local · offline
         </Text>
         <View style={{flex: 1}} />
+        <TouchableOpacity
+          style={[
+            styles.themeBtn,
+            {borderColor: colors.border},
+            showSuggest ? {backgroundColor: colors.accent} : null,
+          ]}
+          onPress={() => setShowSuggest(s => !s)}>
+          <Text style={{color: showSuggest ? '#ffffff' : colors.text}}>
+            {showSuggest ? '↔ Suggestions on' : '↔ Suggestions'}
+          </Text>
+        </TouchableOpacity>
         <TouchableOpacity
           style={[styles.themeBtn, {borderColor: colors.border}]}
           onPress={() => setDark(d => !d)}>
@@ -332,7 +373,13 @@ export default function App() {
             selectedStem={selectedStem}
             onSelect={setSelectedStem}
             dark={dark}
+            focusCluster={focusCluster}
+            showSuggest={showSuggest}
           />
+          <Text style={[styles.legend, {color: colors.secondary}]}>
+            {BRAIN.clusters.slice(0, 4).map(c => c.label.split(',')[0]).join(' · ')}
+            {' · '}ring = hub (6+) · dashed = quiet note
+          </Text>
         </View>
         {reader}
       </View>
@@ -380,6 +427,7 @@ const styles = StyleSheet.create({
   clusterLabel: {fontSize: 13, fontWeight: '600'},
   clusterMembers: {fontSize: 12, lineHeight: 17},
   attention: {fontSize: 12, lineHeight: 18, marginBottom: 4},
+  legend: {fontSize: 12, marginTop: 8},
   noteTitle: {fontSize: 26, fontWeight: '700', marginBottom: 4},
   noteMeta: {fontSize: 12, marginBottom: 12},
   welcome: {fontSize: 15, lineHeight: 22, marginBottom: 10},

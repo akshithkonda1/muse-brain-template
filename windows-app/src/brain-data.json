@@ -1,5 +1,5 @@
 {
- "generated": "2026-11-09T01:31:27.452773+00:00",
+ "generated": "2026-11-09T03:38:34.603673+00:00",
  "source": "Markdown brain (notes/ + wiki/) via scan.py + ml/search.py",
  "notes": [
   {
@@ -66,20 +66,20 @@
  ],
  "positions": {
   "example-person": [
-   449.9,
-   281.0
+   558.5,
+   262.8
   ],
   "example-project": [
-   364.7,
-   286.7
+   480.0,
+   257.3
   ],
   "walrus-second-brain-post": [
-   384.5,
-   207.3
+   310.0,
+   257.7
   ],
   "second-brain-pattern": [
-   440.1,
-   221.7
+   251.1,
+   262.3
   ]
  },
  "clusters": [
@@ -96,6 +96,44 @@
     "walrus-second-brain-post",
     "second-brain-pattern"
    ]
+  }
+ ],
+ "clusterColors": [
+  "#7C5CFF",
+  "#14B8A6",
+  "#F59E0B",
+  "#F43F5E",
+  "#0EA5E9",
+  "#10B981",
+  "#F97316",
+  "#6366F1"
+ ],
+ "clusterIndex": {
+  "example-person": 0,
+  "example-project": 0,
+  "walrus-second-brain-post": 1,
+  "second-brain-pattern": 1
+ },
+ "hubs": [
+  {
+   "stem": "example-project",
+   "title": "Example project — Community Garden Tracker",
+   "degree": 3
+  },
+  {
+   "stem": "example-person",
+   "title": "Example person — Jordan Lee",
+   "degree": 2
+  },
+  {
+   "stem": "walrus-second-brain-post",
+   "title": "Walrus second-brain post",
+   "degree": 1
+  },
+  {
+   "stem": "second-brain-pattern",
+   "title": "The second-brain pattern this brain is built on",
+   "degree": 0
   }
  ],
  "suggestions": [
