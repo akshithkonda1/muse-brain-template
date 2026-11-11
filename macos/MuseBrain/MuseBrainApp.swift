@@ -10,10 +10,17 @@ import SwiftUI
 @main
 struct MuseBrainApp: App {
     @StateObject private var store = BrainStore()
+    // Session only: signing out (or quitting) ends it. The profile
+    // comes from brain-profile.json in the brain folder; the
+    // passcode hash lives in UserDefaults (see AuthView.swift).
+    // No account, no cloud — see docs/login.md.
+    @AppStorage("muse-brain-signed-in") private var signedIn = false
 
     var body: some Scene {
         WindowGroup {
-            if store.brainFolder == nil {
+            if !signedIn {
+                AuthView(profile: store.profile) { signedIn = true }
+            } else if store.brainFolder == nil {
                 WelcomeView(store: store)
             } else {
                 ContentView(store: store)

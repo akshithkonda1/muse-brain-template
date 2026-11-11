@@ -107,9 +107,16 @@ def _read_file(path: Path, area: str):
     except OSError:
         text = ""
     title_m = TITLE_RE.search(text)
-    sources = SOURCE_RE.findall(text)[:3]
-    if not sources:
-        sources = [f"per {m}" for m in PER_SOURCE_RE.findall(text)[:3]]
+    sources = SOURCE_RE.findall(text)
+    # Most notes carry sources inline, at the end of a fact line —
+    # "(per Akshith, Oct 2026)" or "(Source: ~/memory/…)". Those are
+    # real source trails too; the line-anchored regex above misses
+    # them, so collect them as well (same rule as scan.py).
+    sources += [f"per {m}" for m in PER_SOURCE_RE.findall(text)]
+    sources += re.findall(r"\(Source:\s*[^)]+\)", text)
+    _seen = set()
+    sources = [" ".join(str(x).split()) for x in sources]
+    sources = [x for x in sources if not (x in _seen or _seen.add(x))][:3]
     # Links inside `inline code` are mentions/examples (e.g. `[[links]]`
     # in a skill doc), not real links — exclude them from the graph.
     link_text = re.sub(r"`[^`]*`", " ", text)
@@ -263,6 +270,62 @@ def render(files, incoming, broken, ml, now_str, now_ts):
         L.append(f"> ML reports unavailable this run: {ml['error']} "
                  "Clusters below fall back to tag groups.")
         L.append("")
+
+    # ---- What Muse knows (the digital copy, after sign-in) ----
+    # Same data the dashboard's "What Muse knows" view shows: topics
+    # by area, each with its one-line summary and source trail. See
+    # docs/login.md. Generated from the real files — no invented facts.
+    L.append("## What Muse knows — the digital copy")
+    L.append("")
+    L.append("> Sign in (see `docs/login.md`) and this is the view you "
+             "get: your information as an interactive memory map. Every "
+             "topic below is a real note; every source is a real line in "
+             "that note. Where Muse has no source, it says so — check "
+             "the trail before you trust the summary.")
+    L.append("")
+    _knows_areas = {}
+    for f in notes:
+        tag = (f["tags"] or ["notes"])[0]
+        _knows_areas.setdefault(tag, []).append(f)
+    for tag in sorted(_knows_areas, key=lambda t: -len(_knows_areas[t])):
+        members = sorted(_knows_areas[tag],
+                         key=lambda f: -degree[Path(f["rel"]).stem])
+        with_src = sum(1 for f in members if f["sources"])
+        L.append(f"- **{tag.title()}** — {len(members)} note"
+                 f"{'s' if len(members) != 1 else ''} "
+                 f"({with_src} with a source trail): " +
+                 ", ".join(f"`[[{Path(f['rel']).stem}]]`" for f in members[:5]) +
+                 (" \u2026" if len(members) > 5 else ""))
+    L.append("")
+    for f in sorted(notes, key=lambda f: -degree[Path(f["rel"]).stem])[:8]:
+        stem = Path(f["rel"]).stem
+        _txt = f["text"]
+        _para, _started = [], False
+        for ln in _txt.split("\n"):
+            ln = ln.strip()
+            if not ln:
+                if _started:
+                    break
+                continue
+            if ln.startswith("#") or ln.startswith("Tags:") or ln.startswith(">"):
+                continue
+            _started = True
+            _para.append(ln)
+        _excerpt = " ".join(_para)
+        if len(_excerpt) > 180:
+            _excerpt = _excerpt[:177] + "\u2026"
+        _excerpt = _excerpt.replace("[[", "").replace("]]", "")
+        L.append(f"- **`[[{stem}]]`** — {_excerpt}")
+        if f["sources"]:
+            L.append(f"  - Sources: " + "; ".join(f["sources"][:3]))
+        else:
+            L.append("  - Sources: _none on file — check before trusting_")
+    L.append("")
+    L.append(f"_Coverage: **{len([f for f in notes if f['sources']])}/{total_notes}** "
+             "notes carry a source trail; "
+             f"**{len(need_source)}** marked `[source needed]`; "
+             f"**{len(no_source)}** pages with no source line at all._")
+    L.append("")
 
     # ---- Hubs ----
     L.append("## Hubs — the most-connected notes")

@@ -16,7 +16,9 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
-import {BRAIN, NOTE_BY_STEM, TAG_COUNTS, TOTAL_LINKS, CLUSTER_COLORS} from './brain';
+import {BRAIN, NOTE_BY_STEM, TAG_COUNTS, TOTAL_LINKS, CLUSTER_COLORS, PROFILE, KNOWS} from './brain';
+import {LoginScreen} from './Login';
+import {KnowsView} from './KnowsView';
 import {SEARCH_INDEX} from './search';
 import {GraphView} from './GraphView';
 import {MarkdownView} from './markdown';
@@ -54,6 +56,11 @@ export default function App() {
   const [focusCluster, setFocusCluster] = useState<number | null>(null);
   const [showSuggest, setShowSuggest] = useState(false);
   const [dark, setDark] = useState(false);
+  // Login gate (docs/login.md): session-only in v1 — closing the
+  // app ends the session. "Sign in with Muse" is an honest
+  // placeholder until Meta publishes a sign-in endpoint.
+  const [signedIn, setSignedIn] = useState(false);
+  const [view, setView] = useState<'map' | 'knows'>('map');
   const {width} = useWindowDimensions();
   const narrow = width < 1000;
   const searchRef = useRef<TextInput>(null);
@@ -285,6 +292,22 @@ export default function App() {
             }}
             onOpenNote={setSelectedStem}
           />
+          <Text style={[styles.sectionTitle, {color: colors.text}]}>
+            What Muse knows — sources
+          </Text>
+          {(() => {
+            const kt = KNOWS.topics.find(t => t.stem === selected.stem);
+            if (!kt) return null;
+            return kt.sources.length > 0 ? (
+              <Text style={{fontSize: 13, color: colors.secondary, lineHeight: 19}}>
+                Sources: {kt.sources.join(' · ')}
+              </Text>
+            ) : (
+              <Text style={{fontSize: 13, fontWeight: '700', color: '#B45309'}}>
+                No source on file — check before trusting.
+              </Text>
+            );
+          })()}
           {related.length > 0 && (
             <>
               <Text style={[styles.sectionTitle, {color: colors.text}]}>
@@ -322,6 +345,10 @@ export default function App() {
     </ScrollView>
   );
 
+  if (!signedIn) {
+    return <LoginScreen profile={PROFILE} colors={colors} onSignIn={() => setSignedIn(true)} />;
+  }
+
   return (
     <View style={[styles.root, {backgroundColor: colors.bg}]}>
       <View
@@ -348,6 +375,18 @@ export default function App() {
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
+          style={[styles.themeBtn, {borderColor: colors.border, backgroundColor: view === 'knows' ? colors.accent : undefined}]}
+          onPress={() => setView(view === 'knows' ? 'map' : 'knows')}>
+          <Text style={{color: view === 'knows' ? '#ffffff' : colors.text}}>
+            {view === 'knows' ? '✦ What Muse knows' : '✦ Knows'}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.themeBtn, {borderColor: colors.border}]}
+          onPress={() => setSignedIn(false)}>
+          <Text style={{color: colors.text}}>Sign out</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
           style={[styles.themeBtn, {borderColor: colors.border}]}
           onPress={() => setDark(d => !d)}>
           <Text style={{color: colors.text}}>
@@ -361,6 +400,28 @@ export default function App() {
           {flexDirection: narrow ? 'column' : 'row'},
         ]}>
         {sidebar}
+        {view === 'knows' ? (
+          <View
+            style={[
+              styles.graphPane,
+              {backgroundColor: colors.surface, borderColor: colors.border},
+            ]}>
+            <KnowsView
+              colors={{
+                surface: colors.surface,
+                text: colors.text,
+                secondary: colors.secondary,
+                accent: colors.accent,
+                border: colors.border,
+                chipBg: colors.chipBg,
+              }}
+              onOpen={stem => {
+                setSelectedStem(stem);
+                setView('map');
+              }}
+            />
+          </View>
+        ) : (
         <View
           style={[
             styles.graphPane,
@@ -381,6 +442,7 @@ export default function App() {
             {' · '}ring = hub (6+) · dashed = quiet note
           </Text>
         </View>
+        )}
         {reader}
       </View>
     </View>

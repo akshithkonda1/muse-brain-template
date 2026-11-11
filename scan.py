@@ -384,6 +384,139 @@ def layout_positions(notes, incoming, clusters=None):
     return {s: [round(x, 1), round(y, 1)] for s, (x, y) in pos.items()}
 
 
+
+AREA_LABELS = {
+    "people": "People", "projects": "Projects", "money": "Money",
+    "goals": "Goals", "places": "Places", "ideas": "Ideas",
+    "journal": "Journal", "brain": "Brain & method", "notes": "Notes",
+}
+
+
+def load_profile():
+    """The signed-in profile for this brain (brain-profile.json).
+
+    Private brain: Akshith. Public template: a clearly-marked Demo
+    profile. No secrets in this file — just a display name and a
+    demo flag. Missing file = generic fallback, never a crash.
+    """
+    try:
+        import json as _json
+        prof = _json.loads((BRAIN / "brain-profile.json").read_text(encoding="utf-8"))
+        return {"owner": prof.get("owner", "You"),
+                "display_name": prof.get("display_name", prof.get("owner", "You")),
+                "demo": bool(prof.get("demo", False))}
+    except Exception:
+        return {"owner": "You", "display_name": "You", "demo": False}
+
+
+def _excerpt(text):
+    """One-line summary of a note: first substantive paragraph.
+
+    Notes wrap paragraphs across physical lines, so join lines until
+    the first blank line — the first line alone is usually a clipped
+    half-sentence.
+    """
+    para = []
+    started = False
+    for line in text.split("\n"):
+        line = line.strip()
+        if not line:
+            if started:
+                break
+            continue
+        if line.startswith("#") or line.startswith("Tags:"):
+            continue
+        if line.startswith(">"):
+            continue
+        started = True
+        para.append(line)
+    if not para:
+        return ""
+    line = re.sub(r"\[\[([^\]|#]+)(?:#[^\]]*)?(?:\|[^\]]*)?\]\]",
+                  r"\1", " ".join(para))
+    line = re.sub(r"[*_`]", "", line)
+    return (line[:217] + "\u2026") if len(line) > 220 else line
+
+
+def _sources(text):
+    """Source trail for a note: `Source:` lines + `(per ...)` lines."""
+    found = []
+    for line in text.split("\n"):
+        m = re.match(r"\s*(?:[-*]\s+)?(?:\*\*)?Source:(?:\*\*)?\s+(.+?)\s*$", line)
+        if m:
+            found.append(m.group(1).strip())
+    for m in re.finditer(r"\(per\s+[^)]+\)", text):
+        found.append(m.group(0))
+    for m in re.finditer(r"\(Source:\s*[^)]+\)", text):
+        found.append(m.group(0))
+    # De-duplicate, keep order, cap at 3 — the trail, not the text.
+    # Sources can wrap across lines in the note; flatten the whitespace
+    # so a trail never breaks mid-line in the UI or the map.
+    out = []
+    for s in found:
+        s = " ".join(str(s).split())
+        if s not in out:
+            out.append(s)
+    return out[:3]
+
+
+def build_knows(docs, incoming, clusters):
+    """The "What Muse knows" payload: topics + areas + coverage.
+
+    One entry per note/wiki page: title, excerpt, source trail,
+    tags/area, degree, cluster, links. Areas group topics by tag.
+    Everything here is derived from the real files on disk — no
+    invented facts. Used by the dashboard, /api/knows, the Windows
+    snapshot, and MEMORY-MAP.md's "What Muse knows" section.
+    """
+    cluster_of = {}
+    for ci, c in enumerate(clusters or []):
+        for m in c.get("members", []):
+            cluster_of[m] = {"index": ci, "label": c.get("label", "")}
+    topics = []
+    for d in docs:
+        stem = d["stem"]
+        tags = d.get("tags", [])
+        area_tag = tags[0] if tags else "notes"
+        topics.append({
+            "stem": stem,
+            "title": d["title"],
+            "tags": tags,
+            "area": AREA_LABELS.get(area_tag, area_tag.title()),
+            "area_tag": area_tag,
+            "excerpt": _excerpt(d.get("text", "")),
+            "sources": _sources(d.get("text", "")),
+            "source_needed": "[source needed]" in d.get("text", ""),
+            "degree": len(d.get("links", [])) + len(incoming.get(stem, [])),
+            "links": d.get("links", []),
+            "incoming": sorted(incoming.get(stem, [])),
+            "cluster": cluster_of.get(stem),
+        })
+    topics.sort(key=lambda t: -t["degree"])
+    areas = []
+    for tag in sorted({t["area_tag"] for t in topics}):
+        members = [t for t in topics if t["area_tag"] == tag]
+        areas.append({
+            "tag": tag,
+            "label": AREA_LABELS.get(tag, tag.title()),
+            "count": len(members),
+            "with_source": sum(1 for t in members if t["sources"]),
+            "topics": [t["stem"] for t in members[:8]],
+        })
+    areas.sort(key=lambda a: -a["count"])
+    return {
+        "topics": topics,
+        "areas": areas,
+        "coverage": {
+            "total": len(topics),
+            "with_source": sum(1 for t in topics if t["sources"]),
+            "source_needed": sum(1 for t in topics if t["source_needed"]),
+            "linked": sum(1 for t in topics if t["degree"] > 0),
+            "quiet": sum(1 for t in topics if t["degree"] == 0),
+        },
+    }
+
+
 def render_dashboard(notes, tag_counts, incoming, broken, orphans, now):
     """Render the polished dashboard.html from app/dashboard-template.html.
 
@@ -445,6 +578,8 @@ def render_dashboard(notes, tag_counts, incoming, broken, orphans, now):
                           "#0EA5E9", "#10B981", "#F97316", "#6366F1"],
         "clusterIndex": {m: ci for ci, c in enumerate(data["clusters"])
                          for m in c.get("members", [])},
+        "profile": load_profile(),
+        "knows": build_knows(docs, incoming, data["clusters"]),
         "hubs": sorted(
             ({"stem": d["stem"], "title": d["title"],
               "degree": len(d["links"]) + len(incoming.get(d["stem"], []))}

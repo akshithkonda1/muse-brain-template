@@ -138,3 +138,30 @@ structure, not decoration:
   lives here, in this file — never in the map.
 - Zero external assets. If a frontend needs a font, an icon, or an
   image, it draws it or bundles it.
+
+## Login gate + "What Muse knows"
+
+The login screen and the knows view reuse the same tokens — warm
+paper / ink surfaces, violet accent, system-ui type, cluster colours
+in fixed rank order. Nothing new is invented for them.
+
+- **Login gate** (`#loginGate` / `AuthView` / `LoginScreen`): a centred
+  card, 20px radius, 1px border, on the page background. Eyebrow in
+  accent violet, 30–34px bold title, lead paragraph in secondary.
+  Primary button is the accent fill ("Continue locally"); secondary
+  is the bordered "Sign in with Muse". The Muse notice and the
+  privacy line are plain text in secondary — the honest limitation
+  ("no public Meta / Muse sign-in endpoint yet") is always visible,
+  never hidden behind a tooltip.
+- **"What Muse knows" view** (`#knowsView` / `KnowsView`): the same
+  hero + area cards as the map, with a filter input and a topic list.
+  Area chips are bordered pills; the active area is accent-filled.
+  A topic shows title (bold), one-line excerpt (secondary), tags +
+  degree + cluster (secondary), then the source trail (secondary)
+  or, when a topic has no source, a plain amber "No source on file —
+  check before trusting." line. The same source-trail line is
+  appended to the note reader on every frontend.
+- **Demo marking (template only):** the demo profile flips the login
+  title to "Try the demo" and adds a one-line "demo digital copy"
+  note. The UI is identical otherwise — the demo is the same app,
+  not a different screen.
